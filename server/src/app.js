@@ -8,6 +8,7 @@ const env = require('./config/env');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth');
 const reportRoutes = require('./routes/reports');
+const adminRoutes = require('./routes/admin');
 const AppError = require('./utils/AppError');
 
 const app = express();
@@ -29,6 +30,7 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 for any other route.
 app.use((_req, _res, next) => next(new AppError('Route not found.', 404)));

@@ -3,6 +3,7 @@ const express = require('express');
 const z = require('zod');
 
 const reportsController = require('../controllers/reportsController');
+const upvoteController = require('../controllers/upvoteController');
 const authRequired = require('../middleware/authRequired');
 const validate = require('../middleware/validate');
 const uploadImage = require('../middleware/upload');
@@ -49,6 +50,9 @@ router.post(
   validate(createReportSchema),
   reportsController.createReport
 );
+// Toggle upvote on a report (login required)
+router.post('/:id/upvote', authRequired, upvoteController.toggleUpvote);
+
 router.delete('/:id', authRequired, reportsController.deleteReport);
 
 module.exports = router;

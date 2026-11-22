@@ -17,7 +17,16 @@ const validate = (schema, property = 'body') => (req, _res, next) => {
     return next(new AppError('Validation failed', 422, details));
   }
 
-  req[property] = result.data;
+  req.validated = req.validated || {};
+  req.validated[property] = result.data;
+
+  // Replace the original for body/params (own writable props, strips unknown keys
+  // as a mass-assignment guard). For 'query' we skip the write-back — Express can
+  // expose req.query as a read-only getter, so handlers read req.validated.query.
+  if (property !== 'query') {
+    req[property] = result.data;
+  }
+
   next();
 };
 

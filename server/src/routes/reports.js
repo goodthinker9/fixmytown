@@ -1,0 +1,54 @@
+// Reports routes (/api/reports)
+const express = require('express');
+const z = require('zod');
+
+const reportsController = require('../controllers/reportsController');
+const authRequired = require('../middleware/authRequired');
+const validate = require('../middleware/validate');
+const uploadImage = require('../middleware/upload');
+
+const router = express.Router();
+
+// Shared value sets (mirror the DB enums from Phase 1).
+const CATEGORIES = ['water', 'electricity', 'roads', 'garbage', 'safety', 'other'];
+const STATUSES = ['reported', 'in_progress', 'resolved'];
+
+// --- Validation schemas ---
+// Multipart form fields arrive as strings, so latitude/longitude use
+// z.coerce.number() to turn them into numbers.
+const createReportSchema = z.object({
+  title: z.string().min(5, 'Title must be at least 5 characters').max(150),
+  description: z.string().min(10, 'Description must be at least 10 characters').max(2000),
+  category: z.enum(CATEGORIES, { errorMap: () => ({ message: 'Invalid category' }) }),
+  latitude: z.coerce
+    .number()
+    .min(-90, 'Latitude must be between -90 and 90')
+    .max(90, 'Latitude must be between -90 and 90'),
+  longitude: z.coerce
+    .number()
+    .min(-180, 'Longitude must be between -180 and 180')
+    .max(180, 'Longitude must be between -180 and 180'),
+});
+
+const listReportsSchema = z.object({
+  category: z.enum(CATEGORIES).optional(),
+  status: z.enum(STATUSES).optional(),
+  search: z.string().max(150).optional(),
+  sort: z.enum(['newest', 'top']).optional().default('newest'),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(50).optional().default(20),
+});
+
+// GET routes are public. POST/DELETE require a logged-in user.
+router.get('/', validate(listReportsSchema, 'query'), reportsController.listReports);
+router.get('/:id', reportsController.getReport);
+router.post(
+  '/',
+  authRequired,
+  uploadImage, // multipart parser (image optional) — must run before validate
+  validate(createReportSchema),
+  reportsController.createReport
+);
+router.delete('/:id', authRequired, reportsController.deleteReport);
+
+module.exports = router;

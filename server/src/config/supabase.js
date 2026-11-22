@@ -1,0 +1,11 @@
+// Supabase client configured with the SERVICE ROLE key.
+// This key bypasses Row-Level Security and Storage policies, so it must
+// NEVER reach the frontend. It lives only in the server process.
+const { createClient } = require('@supabase/supabase-js');
+const env = require('./env');
+
+const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+module.exports = supabase;

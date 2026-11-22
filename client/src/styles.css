@@ -1,0 +1,158 @@
+/* ===========================================================
+   FixMyTown — global styles
+   Chosen as plain CSS (no Tailwind): no extra build dependency, full
+   control, and it shows real CSS fundamentals (custom properties,
+   flexbox, media queries) which is what interviewers want to see.
+   =========================================================== */
+
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-light: #eff6ff;
+  --bg: #f1f5f9;
+  --surface: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --danger: #dc2626;
+  --danger-light: #fef2f2;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 25px rgba(15, 23, 42, 0.1);
+  --max-width: 1120px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+h1, h2, h3 { line-height: 1.2; margin: 0 0 0.5em; }
+
+/* ---- Layout ---- */
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  width: 100%;
+}
+.page { padding: 1rem 0; }
+
+/* ---- Navbar ---- */
+.navbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.navbar__inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.navbar__brand { font-weight: 700; font-size: 1.15rem; color: var(--text); }
+.navbar__brand:hover { text-decoration: none; }
+.navbar__links { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.navbar__user { color: var(--muted); font-size: 0.9rem; margin-right: 0.25rem; }
+.nav-link { padding: 0.4rem 0.6rem; border-radius: 8px; color: var(--text); }
+.nav-link:hover { background: var(--primary-light); text-decoration: none; }
+.nav-link.active { color: var(--primary); font-weight: 600; }
+
+/* ---- Buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.05s;
+  min-height: 44px; /* comfortable tap target on phones */
+}
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn--primary { background: var(--primary); color: #fff; }
+.btn--primary:hover:not(:disabled) { background: var(--primary-dark); text-decoration: none; color: #fff; }
+.btn--link { background: transparent; color: var(--text); border-color: var(--border); }
+.btn--link:hover { background: var(--bg); text-decoration: none; color: var(--text); }
+.btn--block { width: 100%; }
+
+/* ---- Auth form / cards ---- */
+.auth-page {
+  min-height: calc(100vh - 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 2rem;
+  width: 100%;
+  max-width: 420px;
+}
+.auth-form__title { margin-bottom: 1.25rem; font-size: 1.5rem; }
+.auth-form__switch { text-align: center; margin: 1rem 0 0; color: var(--muted); font-size: 0.9rem; }
+
+/* ---- Form fields ---- */
+.field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 1rem; }
+.field__label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+.input {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 1rem;
+  background: var(--surface);
+  color: var(--text);
+  min-height: 44px;
+}
+.input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+.input--error { border-color: var(--danger); }
+.input--error:focus { box-shadow: 0 0 0 3px var(--danger-light); }
+.field__error { color: var(--danger); font-size: 0.8rem; }
+
+/* ---- Alerts ---- */
+.alert { padding: 0.65rem 0.85rem; border-radius: 10px; font-size: 0.9rem; margin-bottom: 1rem; }
+.alert--error { background: var(--danger-light); color: var(--danger); border: 1px solid #fecaca; }
+
+/* ---- Loading / misc ---- */
+.loading { display: flex; align-items: center; justify-content: center; padding: 3rem; color: var(--muted); }
+
+/* ---- Home hero ---- */
+.home__hero { max-width: 640px; margin: 0 auto; text-align: center; padding: 2rem 0; }
+.home__hero h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); margin-bottom: 0.75rem; }
+.home__lead { color: var(--muted); font-size: 1.05rem; margin-bottom: 1.5rem; }
+.home__actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+
+/* ---- Responsive: stack the navbar on small screens ---- */
+@media (max-width: 600px) {
+  .navbar__inner { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+  .navbar__brand { text-align: center; }
+  .navbar__links { justify-content: center; }
+  .card { padding: 1.5rem; }
+  .home__actions .btn { width: 100%; }
+}

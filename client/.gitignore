@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local env (VITE_ vars are public, but keep your config local)
+.env
+.env.local
+
+# Logs
+*.log
+
+# Editor / OS
+.DS_Store
+.vite/

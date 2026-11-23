@@ -1,8 +1,9 @@
-// Admin controller: status updates + aggregate stats.
+// Admin controller: status updates + aggregate stats + AI weekly summary.
 const { query } = require('../config/db');
 const withTransaction = require('../utils/withTransaction');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
+const { generateWeeklySummary } = require('../utils/aiHelpers');
 
 const CATEGORIES = ['water', 'electricity', 'roads', 'garbage', 'safety', 'other'];
 const STATUSES = ['reported', 'in_progress', 'resolved'];
@@ -106,4 +107,67 @@ const getStats = asyncHandler(async (req, res, next) => {
   });
 });
 
-module.exports = { updateStatus, getStats };
+// GET /api/admin/weekly-summary  (admin only)
+// Builds stats on the fly and passes them to Claude for a prose summary.
+const getWeeklySummary = asyncHandler(async (req, res, next) => {
+  // Re-use the same stats query as getStats so we don't duplicate logic.
+  const [totalRes, categoryRes, statusRes, weekRes, avgRes] = await Promise.all([
+    query('select count(*)::int as total from reports'),
+    query('select category, count(*)::int as count from reports group by category'),
+    query('select status, count(*)::int as count from reports group by status'),
+    query(
+      `select to_char(date_trunc('week', created_at), 'YYYY-MM-DD') as week,
+              count(*)::int as count
+       from reports
+       where created_at >= date_trunc('week', now()) - interval '7 weeks'
+       group by week
+       order by week`
+    ),
+    query(
+      `select round(avg(extract(epoch from (resolved_at - created_at)) / 3600)::numeric, 1) as avg_hours
+       from reports where resolved_at is not null`
+    ),
+  ]);
+
+  const byCategory = Object.fromEntries(CATEGORIES.map((c) => [c, 0]));
+  categoryRes.rows.forEach((r) => { byCategory[r.category] = r.count; });
+
+  const byStatus = Object.fromEntries(STATUSES.map((s) => [s, 0]));
+  statusRes.rows.forEach((r) => { byStatus[r.status] = r.count; });
+
+  const now = new Date();
+  const utcDay = now.getUTCDay();
+  const diffToMonday = utcDay === 0 ? -6 : 1 - utcDay;
+  const thisMonday = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(),
+    now.getUTCDate() + diffToMonday
+  ));
+  const weekMap = new Map(weekRes.rows.map((r) => [r.week, r.count]));
+  const by_week = [];
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date(thisMonday);
+    d.setUTCDate(thisMonday.getUTCDate() - 7 * i);
+    const label = d.toISOString().slice(0, 10);
+    by_week.push({ week: label, count: weekMap.get(label) || 0 });
+  }
+
+  const stats = {
+    total_reports: totalRes.rows[0].total,
+    by_category: byCategory,
+    by_status: byStatus,
+    by_week,
+    avg_hours_to_resolve: avgRes.rows[0].avg_hours === null
+      ? null
+      : Number(avgRes.rows[0].avg_hours),
+  };
+
+  const summary = await generateWeeklySummary(stats);
+
+  if (!summary) {
+    return next(new AppError('AI summary is unavailable right now. Please try again later.', 503));
+  }
+
+  res.json({ summary });
+});
+
+module.exports = { updateStatus, getStats, getWeeklySummary };

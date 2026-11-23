@@ -1,40 +1,119 @@
-// Reports controller: create (with optional image), list (filter/search/sort/
-// paginate), get one (with status history), delete (owner or admin).
+// Reports controller: create (with optional image + AI classify/duplicate),
+// list (filter/search/sort/paginate), get one (with status history),
+// delete (owner or admin).
 const { query } = require('../config/db');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 const { uploadReportImage } = require('../utils/storage');
+const { classifyReport, detectDuplicate } = require('../utils/aiHelpers');
+
+// Haversine distance in metres between two lat/lng pairs.
+// Used to find candidate duplicates within 200 m before asking Claude.
+function haversineMetres(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 // POST /api/reports  (authRequired, optional image)
 const createReport = asyncHandler(async (req, res, next) => {
   const { title, description, category, latitude, longitude } = req.body;
 
-  // Upload the image first (if any), then persist the report row.
-  // Trade-off: if the DB insert fails after a successful upload, the image is
-  // orphaned in Storage. Acceptable for now; a cleanup job could remove orphans.
+  // --- Step 1: Upload image (if provided) ---
   let image_url = null;
   if (req.file) {
     image_url = await uploadReportImage(req.file);
   }
 
-  // status/priority/upvote_count/created_at/updated_at use DB defaults.
+  // --- Step 2: AI classification (non-blocking) ---
+  // We always ask Claude for a priority. We use Claude's category suggestion
+  // only when the user chose "other" — if they chose something specific we
+  // respect their choice.
+  // If Claude fails (timeout, quota, bad JSON), fallback = { category: null, priority: 'medium' }.
+  const aiResult = await classifyReport({ title, description });
+  const finalCategory =
+    category === 'other' && aiResult.category ? aiResult.category : category;
+  const finalPriority = aiResult.priority; // always use AI priority
+
+  // --- Step 3: Duplicate detection (non-blocking) ---
+  // 1. Pull reports in the same (final) category from the last 30 days.
+  // 2. Filter in JS to those within 200 m (avoids PostGIS dependency).
+  // 3. Send up to 5 candidates to Claude.
+  // If anything fails we continue and return duplicate_of: null.
+  let duplicate_of = null;
+  try {
+    const nearby = await query(
+      `select id, title, description, latitude, longitude
+       from reports
+       where category = $1
+         and created_at >= now() - interval '30 days'
+       order by created_at desc
+       limit 50`,
+      [finalCategory]
+    );
+
+    const candidates = nearby.rows.filter(
+      (r) =>
+        haversineMetres(
+          parseFloat(latitude),
+          parseFloat(longitude),
+          parseFloat(r.latitude),
+          parseFloat(r.longitude)
+        ) <= 200
+    );
+
+    if (candidates.length) {
+      const { isDuplicate, matchId } = await detectDuplicate({
+        title,
+        description,
+        category: finalCategory,
+        candidates: candidates.slice(0, 5),
+      });
+      if (isDuplicate) duplicate_of = matchId;
+    }
+  } catch (err) {
+    console.warn('[duplicate check] failed:', err.message);
+  }
+
+  // --- Step 4: Save ---
+  // If a duplicate was found we still save the report (the user may confirm
+  // it's a different issue on the frontend) but we return the matching id.
   const result = await query(
-    `insert into reports (user_id, title, description, category, latitude, longitude, image_url)
-     values ($1, $2, $3, $4, $5, $6, $7)
+    `insert into reports
+       (user_id, title, description, category, latitude, longitude, image_url, priority)
+     values ($1, $2, $3, $4, $5, $6, $7, $8)
      returning id, user_id, title, description, category, status, latitude, longitude,
                image_url, priority, upvote_count, created_at, updated_at, resolved_at`,
-    [req.user.id, title, description, category, latitude, longitude, image_url]
+    [
+      req.user.id,
+      title,
+      description,
+      finalCategory,
+      latitude,
+      longitude,
+      image_url,
+      finalPriority,
+    ]
   );
 
-  res.status(201).json({ report: result.rows[0] });
+  res.status(201).json({
+    report: result.rows[0],
+    // null = no duplicate found (or AI unavailable). Frontend uses this to
+    // show "is this the same issue?" if non-null.
+    duplicate_of,
+    ai_applied: { category: finalCategory, priority: finalPriority },
+  });
 });
 
 // GET /api/reports  (public)
 const listReports = asyncHandler(async (req, res, next) => {
-  // Values come from req.validated.query (Zod parsed + coerced + defaults).
   const { category, status, search, sort, page, limit } = req.validated.query;
 
-  // Build the WHERE clause with parameterized placeholders ($1, $2, ...).
   const filters = [];
   const filterParams = [];
 
@@ -52,19 +131,15 @@ const listReports = asyncHandler(async (req, res, next) => {
   }
 
   const whereClause = filters.length ? `where ${filters.join(' and ')}` : '';
-
-  // `sort` is constrained to a known enum by the schema, so interpolation is safe.
   const orderBy = sort === 'top' ? 'upvote_count desc, created_at desc' : 'created_at desc';
   const offset = (page - 1) * limit;
 
-  // Total count (same filters, no pagination) for the client.
   const countResult = await query(
     `select count(*)::int as total from reports ${whereClause}`,
     filterParams
   );
   const total = countResult.rows[0].total;
 
-  // One page of results. Limit/offset are parameterized to prevent injection.
   const dataParams = [...filterParams, limit, offset];
   const dataResult = await query(
     `select id, user_id, title, description, category, status, latitude, longitude,
@@ -84,7 +159,7 @@ const listReports = asyncHandler(async (req, res, next) => {
   });
 });
 
-// GET /api/reports/:id  (public) — report + its status history
+// GET /api/reports/:id  (public)
 const getReport = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
@@ -102,8 +177,6 @@ const getReport = asyncHandler(async (req, res, next) => {
     return next(new AppError('Report not found.', 404));
   }
 
-  // LEFT join on changed_by: the admin who made a change may have been deleted
-  // (ON DELETE SET NULL), but we still show the history entry.
   const historyResult = await query(
     `select sh.id, sh.old_status, sh.new_status, sh.note, sh.changed_by,
             u.name as changed_by_name, sh.created_at
@@ -136,7 +209,6 @@ const deleteReport = asyncHandler(async (req, res, next) => {
     return next(new AppError('You are not allowed to delete this report.', 403));
   }
 
-  // ON DELETE CASCADE cleans up the report's upvotes and status_history.
   await query('delete from reports where id = $1', [id]);
   res.status(204).end();
 });

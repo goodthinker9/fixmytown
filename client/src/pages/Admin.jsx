@@ -12,7 +12,7 @@ import Pagination from '../components/Pagination.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import StatusModal from '../components/StatusModal.jsx';
 import Toast from '../components/Toast.jsx';
-import { getStats } from '../api/admin.js';
+import { getStats, getWeeklySummary } from '../api/admin.js';
 import { listReports } from '../api/reports.js';
 
 const LIMIT = 10;
@@ -45,6 +45,24 @@ export default function Admin() {
   // Modal + toast
   const [editing, setEditing] = useState(null);
   const [toast, setToast] = useState(null);
+
+  // Weekly summary
+  const [summary, setSummary] = useState('');
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState('');
+
+  const handleGenerateSummary = async () => {
+    setSummaryError('');
+    setSummaryLoading(true);
+    try {
+      const data = await getWeeklySummary();
+      setSummary(data.summary);
+    } catch (err) {
+      setSummaryError(err.response?.data?.error || 'Could not generate summary.');
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
 
   const closeToast = useCallback(() => setToast(null), []);
 
@@ -193,6 +211,29 @@ export default function Admin() {
             </ResponsiveContainer>
           )}
         </div>
+      </div>
+
+      {/* Weekly AI Summary */}
+      <div className="summary-section">
+        <div className="summary-section__header">
+          <h2>Weekly summary</h2>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={handleGenerateSummary}
+            disabled={summaryLoading}
+          >
+            {summaryLoading ? 'Generating…' : '✨ Generate AI summary'}
+          </button>
+        </div>
+        {summaryError && <div className="alert alert--error">{summaryError}</div>}
+        {summary && (
+          <div className="summary-output">
+            {summary.split('\n').filter(Boolean).map((p, i) => (
+              <p key={i}>{p}</p>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Reports table */}

@@ -29,6 +29,8 @@ export default function NewReport() {
   const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
+  // AI duplicate warning: { id, title } of the matching report, or null.
+  const [duplicateWarning, setDuplicateWarning] = useState(null);
 
   const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
@@ -108,6 +110,14 @@ export default function NewReport() {
       if (imageFile) fd.append('image', imageFile);
 
       const data = await createReport(fd);
+
+      // If the AI spotted a likely duplicate, show a warning before redirecting.
+      if (data.duplicate_of) {
+        setDuplicateWarning({ id: data.duplicate_of, reportId: data.report.id });
+        setSubmitting(false);
+        return;
+      }
+
       // Redirect to the new report's page with a one-shot success message.
       navigate(`/reports/${data.report.id}`, {
         state: { flash: 'Your report was submitted successfully.' },
@@ -134,6 +144,27 @@ export default function NewReport() {
       <h1>New report</h1>
       <form className="card form-report" onSubmit={handleSubmit} noValidate>
         {serverError && <div className="alert alert--error">{serverError}</div>}
+
+        {/* Duplicate warning returned by the AI after the report was saved */}
+        {duplicateWarning && (
+          <div className="alert alert--warn">
+            <strong>Possible duplicate:</strong> Our AI thinks this may be the same issue as{' '}
+            <a href={`/reports/${duplicateWarning.id}`} target="_blank" rel="noreferrer">
+              an existing report
+            </a>.{' '}
+            <button
+              type="button"
+              className="btn btn--link"
+              onClick={() =>
+                navigate(`/reports/${duplicateWarning.reportId}`, {
+                  state: { flash: 'Your report was submitted successfully.' },
+                })
+              }
+            >
+              Go to your report anyway →
+            </button>
+          </div>
+        )}
 
         <div className="field">
           <label className="field__label" htmlFor="title">Title</label>

@@ -14,3 +14,9 @@ export async function updateReportStatus(id, { status, note }) {
   const res = await api.patch(`/api/admin/reports/${id}/status`, { status, note });
   return res.data;
 }
+
+// Request a plain-language weekly summary from the AI.
+export async function getWeeklySummary() {
+  const res = await api.get('/api/admin/weekly-summary');
+  return res.data;
+}

@@ -2,20 +2,7 @@
 // fly-to used by the "Use my current location" button.
 import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-
-// Bundlers (Vite) break Leaflet's default marker image paths, so we point the
-// default icon at the imported asset URLs.
-import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
-import iconUrl from 'leaflet/dist/images/marker-icon.png';
-import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl,
-  iconUrl,
-  shadowUrl,
-});
+import '../utils/leafletIcons.js';
 
 // Captures map clicks and forwards the clicked lat/lng up. Returns nothing to
 // render — it just hooks into the map's event system.

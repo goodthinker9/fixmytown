@@ -474,3 +474,150 @@ textarea.input { min-height: 96px; resize: vertical; }
   .report-map { height: 360px; }
   .browse__header { align-items: flex-start; }
 }
+
+/* ===========================================================
+   Phase 8 — admin dashboard (summary cards, charts, table, modal, toast)
+   =========================================================== */
+
+.admin h1 { margin-bottom: 1rem; }
+
+/* ---- Summary cards ---- */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.summary-card__icon {
+  font-size: 1.4rem;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.summary-card--blue .summary-card__icon { background: var(--primary-light); }
+.summary-card--green .summary-card__icon { background: #dcfce7; }
+.summary-card--amber .summary-card__icon { background: #fef9c3; }
+.summary-card__value { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+.summary-card__label { font-size: 0.85rem; color: var(--muted); margin-top: 0.15rem; }
+
+/* ---- Charts ---- */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+.chart-card h2 { font-size: 1rem; margin: 0 0 0.5rem; }
+.chart-card--wide { grid-column: 1 / -1; }
+
+/* ---- Reports table ---- */
+.admin__table-section h2 { font-size: 1.1rem; margin: 1rem 0 0.5rem; }
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.reports-table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.reports-table th,
+.reports-table td { text-align: left; padding: 0.7rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; vertical-align: middle; }
+.reports-table th {
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.reports-table tbody tr:last-child td { border-bottom: none; }
+.reports-table tbody tr:hover { background: var(--bg); }
+.reports-table__title { font-weight: 600; color: var(--text); }
+.reports-table__title:hover { color: var(--primary); }
+.reports-table__date { color: var(--muted); white-space: nowrap; }
+
+/* ---- Modal ---- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1000;
+}
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 440px;
+  padding: 1.25rem;
+}
+.modal__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem; }
+.modal__header h3 { margin: 0; font-size: 1.1rem; }
+.modal__close {
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 0 0.25rem;
+}
+.modal__report { color: var(--muted); font-size: 0.9rem; margin: 0 0 1rem; }
+.modal__actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem; }
+
+/* ---- Toast ---- */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  font-size: 0.9rem;
+  font-weight: 600;
+  z-index: 1100;
+  animation: toast-in 0.2s ease;
+}
+.toast--success { background: #16a34a; color: #fff; }
+.toast--error { background: var(--danger); color: #fff; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .summary-grid { grid-template-columns: repeat(2, 1fr); }
+  .charts-grid { grid-template-columns: 1fr; }
+  .chart-card--wide { grid-column: auto; }
+}
+@media (max-width: 600px) {
+  .summary-grid { grid-template-columns: 1fr; }
+}

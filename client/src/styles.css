@@ -156,3 +156,101 @@ h1, h2, h3 { line-height: 1.2; margin: 0 0 0.5em; }
   .card { padding: 1.5rem; }
   .home__actions .btn { width: 100%; }
 }
+
+/* ===========================================================
+   Phase 6 — report form, map, report detail
+   =========================================================== */
+
+/* ---- Report form ---- */
+.form-report { max-width: 640px; }
+.field__hint { color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem; }
+
+.location-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+.location-coords {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.location-map {
+  height: 320px;
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Image preview */
+.image-preview { margin-top: 0.75rem; display: flex; align-items: flex-start; gap: 0.75rem; }
+.image-preview img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+/* ---- Report detail ---- */
+.report-detail { max-width: 640px; }
+.report-detail__meta { color: var(--muted); font-size: 0.9rem; margin: 0 0 1rem; }
+.report-detail__tags { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
+.report-detail__image {
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+}
+
+/* status badge + small chips */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  margin-bottom: 0.5rem;
+}
+.badge--reported { background: #fef9c3; color: #854d0e; }
+.badge--in_progress { background: var(--primary-light); color: var(--primary-dark); }
+.badge--resolved { background: #dcfce7; color: #166534; }
+.chip {
+  display: inline-block;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* success alert + select/textarea niceties + navbar CTA */
+.alert--success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+select.input { appearance: none; cursor: pointer; }
+textarea.input { min-height: 96px; resize: vertical; }
+.navbar__cta {
+  background: var(--primary);
+  color: #fff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.navbar__cta:hover { background: var(--primary-dark); text-decoration: none; color: #fff; }
+
+/* ---- Mobile tweaks ---- */
+@media (max-width: 600px) {
+  .location-map { height: 260px; }
+  .image-preview img { width: 96px; height: 96px; }
+  .form-report { padding: 1.25rem; }
+}

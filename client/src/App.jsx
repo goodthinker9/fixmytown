@@ -6,6 +6,8 @@ import Home from './pages/Home.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import NewReport from './pages/NewReport.jsx';
+import ReportDetail from './pages/ReportDetail.jsx';
 import Admin from './pages/Admin.jsx';
 import NotFound from './pages/NotFound.jsx';
 
@@ -19,10 +21,12 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/reports/:id" element={<ReportDetail />} />
 
           {/* Authenticated routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/reports/new" element={<NewReport />} />
           </Route>
 
           {/* Admin-only routes */}

@@ -23,6 +23,7 @@ export default function Navbar() {
         <div className="navbar__links">
           {user ? (
             <>
+              <NavLink to="/reports/new" className="navbar__cta">+ New report</NavLink>
               <NavLink to="/dashboard" className={navClass}>Dashboard</NavLink>
               {user.role === 'admin' && (
                 <NavLink to="/admin" className={navClass}>Admin</NavLink>

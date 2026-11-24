@@ -18,6 +18,7 @@ const STATUSES = [
 export default function ReportFilters({
   category, status, sort, searchInput,
   onCategory, onStatus, onSort, onSearch, onClear,
+  showDistanceSort = false,
 }) {
   const hasFilters = category || status || sort !== 'newest' || searchInput;
 
@@ -44,9 +45,7 @@ export default function ReportFilters({
           aria-label="Filter by category"
         >
           <option value="">All categories</option>
-          {CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
+          {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
 
         <select
@@ -56,9 +55,7 @@ export default function ReportFilters({
           aria-label="Filter by status"
         >
           <option value="">All statuses</option>
-          {STATUSES.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
+          {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
 
         <select
@@ -69,6 +66,7 @@ export default function ReportFilters({
         >
           <option value="newest">Newest first</option>
           <option value="top">Most upvoted</option>
+          {showDistanceSort && <option value="distance">Nearest first</option>}
         </select>
 
         {hasFilters && (

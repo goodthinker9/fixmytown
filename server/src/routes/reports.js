@@ -12,18 +12,13 @@ const { sanitizeBody } = require('../utils/sanitize');
 
 const router = express.Router();
 
-// Shared value sets (mirror the DB enums from Phase 1).
 const CATEGORIES = ['water', 'electricity', 'roads', 'garbage', 'safety', 'other'];
 const STATUSES = ['reported', 'in_progress', 'resolved'];
 
-// UUID param schema — reused for every /:id route.
-// Returns 400 (not 422) for a syntactically invalid id so callers can
-// distinguish "bad input format" from "valid id but record not found" (404).
 const uuidParamSchema = z.object({
   id: z.string().uuid('Report id must be a valid UUID'),
 });
 
-// --- Validation schemas ---
 const createReportSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters').max(150),
   description: z
@@ -44,18 +39,40 @@ const createReportSchema = z.object({
 const listReportsSchema = z.object({
   category: z.enum(CATEGORIES).optional(),
   status: z.enum(STATUSES).optional(),
-  // No regex guard on search — special characters are escaped in the controller
-  // before they reach the ILIKE pattern, so they're safe to pass through here.
   search: z.string().max(150).optional(),
-  sort: z.enum(['newest', 'top']).optional().default('newest'),
+  // sort now also accepts 'distance' — only meaningful when lat+lng are provided;
+  // the controller falls back to 'newest' when no coordinates are given.
+  sort: z.enum(['newest', 'top', 'distance']).optional().default('newest'),
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(50).optional().default(20),
-});
 
-// Rate-limit report creation: 10 new reports per hour per USER (not IP).
-// Keying on user id is fairer than IP (NAT/VPNs share IPs) and more accurate
-// (one person can't bypass it by switching network). authRequired runs before
-// this limiter, so req.user.id is guaranteed to exist by the time keyGenerator runs.
+  // --- Proximity search (all three must be provided together) ---
+  // lat/lng: the reference point (user's location or geocoded address).
+  // radius_km: cap at 50 km — prevents full-table scans and accidental misuse.
+  lat: z.coerce
+    .number({ invalid_type_error: 'lat must be a number' })
+    .min(-90).max(90)
+    .optional(),
+  lng: z.coerce
+    .number({ invalid_type_error: 'lng must be a number' })
+    .min(-180).max(180)
+    .optional(),
+  radius_km: z.coerce
+    .number({ invalid_type_error: 'radius_km must be a number' })
+    .positive('radius_km must be positive')
+    .max(50, 'radius_km cannot exceed 50 km')
+    .optional()
+    .default(10),
+}).refine(
+  (d) => {
+    // If any proximity param is supplied, lat AND lng must both be present.
+    const hasAny = d.lat !== undefined || d.lng !== undefined;
+    const hasBoth = d.lat !== undefined && d.lng !== undefined;
+    return !hasAny || hasBoth;
+  },
+  { message: 'Both lat and lng must be provided together', path: ['lat'] }
+);
+
 const createLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
@@ -65,7 +82,6 @@ const createLimiter = rateLimit({
   message: { error: 'Too many reports submitted. Please try again later.' },
 });
 
-// GET routes are public. POST/DELETE require a logged-in user.
 router.get('/', validate(listReportsSchema, 'query'), reportsController.listReports);
 
 router.get(
@@ -77,8 +93,8 @@ router.get(
 router.post(
   '/',
   authRequired,
-  createLimiter,       // after authRequired so req.user.id exists
-  uploadImage,         // multipart parser — must run before Zod validate on body
+  createLimiter,
+  uploadImage,
   validate(createReportSchema),
   sanitizeBody,
   reportsController.createReport

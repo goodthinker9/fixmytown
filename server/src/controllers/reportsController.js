@@ -111,50 +111,145 @@ const createReport = asyncHandler(async (req, res, next) => {
 });
 
 // GET /api/reports  (public)
+// Supports optional proximity search: ?lat=&lng=&radius_km= (default 10).
+// When lat+lng are provided, each row gets a distance_km field calculated with
+// the haversine formula entirely in SQL — no PostGIS extension required.
+// sort=distance only takes effect when lat+lng are present; falls back to newest.
 const listReports = asyncHandler(async (req, res, next) => {
-  const { category, status, search, sort, page, limit } = req.validated.query;
+  const { category, status, search, sort, page, limit, lat, lng, radius_km } = req.validated.query;
 
-  const filters = [];
-  const filterParams = [];
+  const hasProximity = lat !== undefined && lng !== undefined;
 
-  if (category) {
-    filterParams.push(category);
-    filters.push(`category = $${filterParams.length}`);
+  if (!hasProximity) {
+    // ── Standard (non-proximity) path — same as before ───────────────
+    const filters = [];
+    const filterParams = [];
+
+    if (category) { filterParams.push(category); filters.push(`category = $${filterParams.length}`); }
+    if (status)   { filterParams.push(status);   filters.push(`status = $${filterParams.length}`); }
+    if (search) {
+      const escaped = search.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+      filterParams.push(`%${escaped}%`);
+      filters.push(`title ilike $${filterParams.length} escape '\\'`);
+    }
+
+    const whereClause = filters.length ? `where ${filters.join(' and ')}` : '';
+    const orderBy = sort === 'top' ? 'upvote_count desc, created_at desc' : 'created_at desc';
+    const offset = (page - 1) * limit;
+
+    const countResult = await query(
+      `select count(*)::int as total from reports ${whereClause}`,
+      filterParams
+    );
+    const total = countResult.rows[0].total;
+
+    const dataParams = [...filterParams, limit, offset];
+    const dataResult = await query(
+      `select id, user_id, title, description, category, status, latitude, longitude,
+              image_url, priority, upvote_count, created_at, updated_at, resolved_at
+       from reports ${whereClause}
+       order by ${orderBy}
+       limit $${dataParams.length - 1} offset $${dataParams.length}`,
+      dataParams
+    );
+
+    return res.json({
+      reports: dataResult.rows,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
   }
-  if (status) {
-    filterParams.push(status);
-    filters.push(`status = $${filterParams.length}`);
-  }
+
+  // ── Proximity path ────────────────────────────────────────────────
+  // We use a CTE that computes distance_km once per row, then filter
+  // and order in the outer query. This avoids duplicating the haversine
+  // formula and keeps parameter numbering clean.
+  //
+  // Parameters:  $1=lat  $2=lng  $3=radius_km  — fixed positions.
+  // Extra filters start at $4.
+  const proximityParams = [lat, lng, radius_km];
+
+  const extraFilters = [];
+  const extraParams = [];
+
+  if (category) { extraParams.push(category); extraFilters.push(`category = $${proximityParams.length + extraParams.length}`); }
+  if (status)   { extraParams.push(status);   extraFilters.push(`status = $${proximityParams.length + extraParams.length}`); }
   if (search) {
-    // Escape ILIKE wildcards so a search for "50%" or "file_name" is treated
-    // as a literal string, not a pattern. The backslash is the PG escape char.
     const escaped = search.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-    filterParams.push(`%${escaped}%`);
-    filters.push(`title ilike $${filterParams.length} escape '\\'`);
+    extraParams.push(`%${escaped}%`);
+    extraFilters.push(`title ilike $${proximityParams.length + extraParams.length} escape '\\'`);
   }
 
-  const whereClause = filters.length ? `where ${filters.join(' and ')}` : '';
-  const orderBy = sort === 'top' ? 'upvote_count desc, created_at desc' : 'created_at desc';
+  const extraWhere = extraFilters.length ? `and ${extraFilters.join(' and ')}` : '';
+
+  const orderBy = sort === 'distance'
+    ? 'distance_km asc'
+    : sort === 'top'
+    ? 'upvote_count desc, created_at desc'
+    : 'created_at desc';
+
   const offset = (page - 1) * limit;
+  const allParams = [...proximityParams, ...extraParams];
 
-  const countResult = await query(
-    `select count(*)::int as total from reports ${whereClause}`,
-    filterParams
+  // Count of matching reports (with radius + any extra filters).
+  const countRes = await query(
+    `with nearby as (
+       select id,
+              (2 * 6371 * asin(sqrt(
+                power(sin(radians((latitude  - $1) / 2)), 2)
+                + cos(radians($1)) * cos(radians(latitude))
+                * power(sin(radians((longitude - $2) / 2)), 2)
+              ))) as distance_km
+       from reports
+       where (2 * 6371 * asin(sqrt(
+                power(sin(radians((latitude  - $1) / 2)), 2)
+                + cos(radians($1)) * cos(radians(latitude))
+                * power(sin(radians((longitude - $2) / 2)), 2)
+              ))) <= $3
+     )
+     select count(*)::int as total
+     from reports r
+     join nearby n on n.id = r.id
+     where true ${extraWhere}`,
+    allParams
   );
-  const total = countResult.rows[0].total;
+  const total = countRes.rows[0].total;
 
-  const dataParams = [...filterParams, limit, offset];
-  const dataResult = await query(
-    `select id, user_id, title, description, category, status, latitude, longitude,
-            image_url, priority, upvote_count, created_at, updated_at, resolved_at
-     from reports ${whereClause}
+  // The page of data, with distance_km attached.
+  const limitParam  = allParams.length + 1;
+  const offsetParam = allParams.length + 2;
+
+  const dataRes = await query(
+    `with nearby as (
+       select id,
+              round((2 * 6371 * asin(sqrt(
+                power(sin(radians((latitude  - $1) / 2)), 2)
+                + cos(radians($1)) * cos(radians(latitude))
+                * power(sin(radians((longitude - $2) / 2)), 2)
+              )))::numeric, 2) as distance_km
+       from reports
+       where (2 * 6371 * asin(sqrt(
+                power(sin(radians((latitude  - $1) / 2)), 2)
+                + cos(radians($1)) * cos(radians(latitude))
+                * power(sin(radians((longitude - $2) / 2)), 2)
+              ))) <= $3
+     )
+     select r.id, r.user_id, r.title, r.description, r.category, r.status,
+            r.latitude, r.longitude, r.image_url, r.priority, r.upvote_count,
+            r.created_at, r.updated_at, r.resolved_at,
+            n.distance_km
+     from reports r
+     join nearby n on n.id = r.id
+     where true ${extraWhere}
      order by ${orderBy}
-     limit $${dataParams.length - 1} offset $${dataParams.length}`,
-    dataParams
+     limit $${limitParam} offset $${offsetParam}`,
+    [...allParams, limit, offset]
   );
 
   res.json({
-    reports: dataResult.rows,
+    reports: dataRes.rows,
     total,
     page,
     limit,

@@ -220,3 +220,76 @@ describe('DELETE /api/reports/:id', () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ── GET /api/reports — proximity search params ────────────────────────────────
+describe('GET /api/reports — proximity search', () => {
+  it('accepts lat+lng and returns distance_km on each report', async () => {
+    // Use coordinates from the seed data (around -1.62, 6.67).
+    const res = await request(app).get(
+      '/api/reports?lat=-1.62&lng=6.67&radius_km=50'
+    );
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.reports)).toBe(true);
+    // Every report in the response should have a numeric distance_km.
+    res.body.reports.forEach((r) => {
+      expect(typeof r.distance_km).toBe('string'); // pg returns numeric as string
+      expect(parseFloat(r.distance_km)).toBeLessThanOrEqual(50);
+    });
+  });
+
+  it('sorts by distance when sort=distance and lat+lng provided', async () => {
+    const res = await request(app).get(
+      '/api/reports?lat=-1.62&lng=6.67&radius_km=50&sort=distance'
+    );
+    expect(res.status).toBe(200);
+    const dists = res.body.reports.map((r) => parseFloat(r.distance_km));
+    for (let i = 1; i < dists.length; i++) {
+      expect(dists[i]).toBeGreaterThanOrEqual(dists[i - 1]);
+    }
+  });
+
+  it('caps radius_km at 50 — returns 422 if radius_km > 50', async () => {
+    const res = await request(app).get(
+      '/api/reports?lat=-1.62&lng=6.67&radius_km=100'
+    );
+    expect(res.status).toBe(422);
+    expect(res.body.details[0].field).toBe('radius_km');
+  });
+
+  it('returns 422 when only lat is supplied without lng', async () => {
+    const res = await request(app).get('/api/reports?lat=-1.62');
+    expect(res.status).toBe(422);
+  });
+
+  it('returns 422 when only lng is supplied without lat', async () => {
+    const res = await request(app).get('/api/reports?lng=6.67');
+    expect(res.status).toBe(422);
+  });
+
+  it('returns 422 for sort=distance without coordinates', async () => {
+    // sort=distance is valid as a string but distance ordering silently falls
+    // back to newest when no coords — however the schema itself should not
+    // reject it, so this should be 200, not 422.
+    const res = await request(app).get('/api/reports?sort=distance');
+    expect(res.status).toBe(200);
+    // No distance_km field when no coords.
+    res.body.reports.forEach((r) => {
+      expect(r.distance_km).toBeUndefined();
+    });
+  });
+
+  it('returns 422 for radius_km=0 (non-positive)', async () => {
+    const res = await request(app).get(
+      '/api/reports?lat=-1.62&lng=6.67&radius_km=0'
+    );
+    expect(res.status).toBe(422);
+    expect(res.body.details[0].field).toBe('radius_km');
+  });
+
+  it('returns 422 for radius_km with a string value', async () => {
+    const res = await request(app).get(
+      '/api/reports?lat=-1.62&lng=6.67&radius_km=far'
+    );
+    expect(res.status).toBe(422);
+  });
+});

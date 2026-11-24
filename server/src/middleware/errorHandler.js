@@ -1,22 +1,28 @@
-// Central error handler — the last middleware in app.js. Converts any thrown
-// AppError into a JSON response, and logs unexpected (5xx) errors in detail.
+// Central error handler — the last middleware in app.js.
+// Converts any thrown AppError into a consistent JSON envelope so every error
+// response has the same shape:
+//   { status: 'error', error: 'Human-readable message', [details]: [...] }
+// This makes it easy to test and easy for the frontend to consume.
 const errorHandler = (err, _req, res, _next) => {
   const statusCode = err.statusCode || 500;
 
-  // Always log server errors so bugs are visible; client errors (4xx) are
-  // expected and noisy, so we skip them.
+  // Log server errors with the full stack; skip 4xx (expected, noisy).
   if (statusCode >= 500) {
     console.error(err);
   }
 
-  const body = { error: err.message || 'Internal server error' };
+  const body = {
+    status: 'error',
+    error: err.message || 'Internal server error',
+  };
 
-  // Attach validation details when present.
+  // Attach validation field details when present (422 responses).
   if (err.details) {
     body.details = err.details;
   }
 
-  // Include a stack trace only outside production, for debugging.
+  // Include a stack trace only in non-production for debugging.
+  // Never in production: stack traces leak internal paths and package versions.
   if (process.env.NODE_ENV !== 'production' && statusCode >= 500) {
     body.stack = err.stack;
   }

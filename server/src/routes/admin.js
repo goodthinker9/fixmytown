@@ -7,6 +7,7 @@ const adminController = require('../controllers/adminController');
 const authRequired = require('../middleware/authRequired');
 const adminOnly = require('../middleware/adminOnly');
 const validate = require('../middleware/validate');
+const { sanitizeBody } = require('../utils/sanitize');
 
 const router = express.Router();
 
@@ -29,7 +30,7 @@ const aiLimiter = rateLimit({
 // Apply auth + admin guard to every route below.
 router.use(authRequired, adminOnly);
 
-router.patch('/reports/:id/status', validate(updateStatusSchema), adminController.updateStatus);
+router.patch('/reports/:id/status', validate(updateStatusSchema), sanitizeBody, adminController.updateStatus);
 router.get('/stats', adminController.getStats);
 router.get('/weekly-summary', aiLimiter, adminController.getWeeklySummary);
 

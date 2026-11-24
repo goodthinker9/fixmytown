@@ -69,6 +69,24 @@ app.get('/api/health', (_req, res) =>
   })
 );
 
+// --- Public stats (used by the home-page strip — no auth required) ---
+app.get('/api/stats', async (_req, res, next) => {
+  try {
+    const { query } = require('./config/db');
+    const result = await query(
+      `select
+         count(*)::int                                                     as total,
+         count(*) filter (where status = 'resolved')::int                 as resolved,
+         count(*) filter (where status = 'in_progress')::int              as in_progress,
+         count(*) filter (where status = 'reported')::int                 as reported
+       from reports`
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // --- Routes ---
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);

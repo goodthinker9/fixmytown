@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar.jsx';
+import Footer from './components/Footer.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
 import Home from './pages/Home.jsx';
@@ -13,30 +14,34 @@ import NotFound from './pages/NotFound.jsx';
 
 export default function App() {
   return (
-    <>
+    <div className="app-shell">
       <Navbar />
-      <main className="container">
+
+      {/* main grows to fill available space, pushing footer down */}
+      <main className="app-main">
         <Routes>
-          {/* Public routes */}
+          {/* Public routes — Home owns its own .container/hero */}
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/reports/:id" element={<ReportDetail />} />
+          <Route path="/login" element={<div className="container"><Login /></div>} />
+          <Route path="/register" element={<div className="container"><Register /></div>} />
+          <Route path="/reports/:id" element={<div className="container"><ReportDetail /></div>} />
 
           {/* Authenticated routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/reports/new" element={<NewReport />} />
+            <Route path="/dashboard" element={<div className="container"><Dashboard /></div>} />
+            <Route path="/reports/new" element={<div className="container"><NewReport /></div>} />
           </Route>
 
           {/* Admin-only routes */}
           <Route element={<AdminRoute />}>
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin" element={<div className="container"><Admin /></div>} />
           </Route>
 
-          <Route path="*" element={<NotFound />} />
+          <Route path="*" element={<div className="container"><NotFound /></div>} />
         </Routes>
       </main>
-    </>
+
+      <Footer />
+    </div>
   );
 }

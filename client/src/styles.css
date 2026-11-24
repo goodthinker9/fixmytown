@@ -1584,3 +1584,321 @@ textarea.input { min-height: 96px; resize: vertical; }
   .dashboard__header { flex-direction: column; align-items: flex-start; }
   .report-detail__topbar { flex-wrap: wrap; }
 }
+
+/* =====================================================================
+   UI-D — 3-step report wizard
+   ===================================================================== */
+
+/* ── WIZARD PAGE SHELL ──────────────────────────────────────────────── */
+.wizard-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) var(--space-8);
+}
+
+/* ── PROGRESS BAR ───────────────────────────────────────────────────── */
+.wizard-progress {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+.wizard-progress__step {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  position: relative;
+}
+.wizard-progress__bubble {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 800;
+  flex-shrink: 0;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  z-index: 1;
+}
+.wizard-progress__step--done  .wizard-progress__bubble { background: var(--green-600);  color: #fff; border-color: var(--green-600); }
+.wizard-progress__step--active .wizard-progress__bubble { background: var(--primary);     color: #fff; border-color: var(--primary); }
+
+.wizard-progress__label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  margin-left: var(--space-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.wizard-progress__step--active .wizard-progress__label { color: var(--primary); }
+.wizard-progress__step--done   .wizard-progress__label { color: var(--green-700); }
+
+.wizard-progress__line {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  margin: 0 var(--space-2);
+}
+.wizard-progress__step--done + .wizard-progress__step .wizard-progress__line,
+.wizard-progress__step--done > .wizard-progress__line {
+  background: var(--green-600);
+}
+
+/* ── STEP CONTENT ───────────────────────────────────────────────────── */
+.wizard-step { }
+.wizard-step__title {
+  font-size: clamp(1.4rem, 4vw, 1.75rem);
+  font-weight: 800;
+  margin-bottom: var(--space-2);
+  letter-spacing: -0.02em;
+}
+.wizard-step__sub {
+  color: var(--muted);
+  font-size: var(--text-base);
+  margin-bottom: var(--space-5);
+  line-height: 1.55;
+}
+
+/* GPS row in step 1 */
+.wizard-step__geo-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+.wizard-step__coords {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Map in step 1 */
+.wizard-map-wrap {
+  position: relative;
+  margin-bottom: var(--space-2);
+}
+.wizard-map {
+  width: 100%;
+  height: 340px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.wizard-map-hint {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: var(--space-2);
+  text-align: center;
+}
+
+/* ── CATEGORY ICON GRID ─────────────────────────────────────────────── */
+.wizard-category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.wizard-cat-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-2) var(--space-3);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  background: var(--surface);
+  transition: border-color 0.12s, box-shadow 0.12s, background 0.12s;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.wizard-cat-btn:hover { border-color: var(--primary-200); box-shadow: var(--shadow); }
+.wizard-cat-btn--selected { box-shadow: var(--shadow-md); }
+.wizard-cat-btn--error    { border-color: var(--red-600); }
+
+.wizard-cat-btn__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius);
+  background: var(--neutral-100);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+.wizard-cat-btn__label {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+.wizard-cat-btn__desc {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: 1.4;
+  /* hide on small phones to keep grid compact */
+}
+
+/* ── CHAR COUNTER ───────────────────────────────────────────────────── */
+.field__label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-1);
+}
+.field__label-row .field__label { margin-bottom: 0; }
+.char-counter {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.char-counter--warn { color: var(--amber-700); font-weight: 600; }
+
+/* ── REPORT SUMMARY CARD (step 3) ───────────────────────────────────── */
+.wizard-summary-heading {
+  font-size: var(--text-base);
+  font-weight: 700;
+  margin-bottom: var(--space-3);
+}
+.wizard-summary {
+  display: flex;
+  gap: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-5);
+}
+.wizard-summary__image {
+  width: 100px;
+  min-height: 100px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--neutral-100);
+}
+.wizard-summary__image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wizard-summary__body { padding: var(--space-3); flex: 1; min-width: 0; }
+.wizard-summary__cat {
+  display: inline-block;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-2);
+  text-transform: capitalize;
+}
+.wizard-summary__title { font-weight: 700; font-size: var(--text-sm); margin-bottom: var(--space-1); }
+.wizard-summary__desc { font-size: var(--text-xs); color: var(--muted); margin-bottom: var(--space-2); }
+.wizard-summary__loc {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── IMAGE PREVIEW in step 3 ────────────────────────────────────────── */
+.wizard-preview {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--space-4);
+  max-height: 260px;
+}
+.wizard-preview img { width: 100%; display: block; max-height: 260px; object-fit: cover; }
+.wizard-preview__overlay { position: absolute; top: var(--space-2); right: var(--space-2); }
+
+/* ── WIZARD NAVIGATION ──────────────────────────────────────────────── */
+.wizard-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-5);
+  gap: var(--space-3);
+}
+.wizard-nav__next { margin-left: auto; }
+
+/* ── TERMINAL SCREENS (success + duplicate) ─────────────────────────── */
+.wizard-terminal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 56px - 160px);
+  padding: var(--space-6) var(--space-4);
+}
+.wizard-terminal__card {
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8) var(--space-6);
+  box-shadow: var(--shadow-lg);
+}
+.wizard-terminal__card--warn { border-color: var(--amber-200); background: var(--amber-50); }
+.wizard-terminal__icon {
+  margin-bottom: var(--space-4);
+}
+.wizard-terminal__icon--success { color: var(--green-600); }
+.wizard-terminal__icon--warn    { color: var(--amber-600); }
+.wizard-terminal__title {
+  font-size: clamp(1.3rem, 3vw, 1.75rem);
+  font-weight: 800;
+  margin-bottom: var(--space-3);
+  letter-spacing: -0.02em;
+}
+.wizard-terminal__desc {
+  color: var(--muted);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  margin-bottom: var(--space-5);
+}
+.wizard-terminal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+}
+.wizard-terminal__dup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+/* ── RESPONSIVE ─────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .wizard-page { padding: var(--space-4) var(--space-3) var(--space-8); }
+  .wizard-map { height: 260px; }
+
+  /* On very small phones hide the category description text */
+  .wizard-cat-btn__desc { display: none; }
+  /* Shrink icon tile */
+  .wizard-cat-btn { padding: var(--space-3) var(--space-1) var(--space-2); }
+  .wizard-cat-btn__icon { width: 44px; height: 44px; }
+
+  /* Summary card: stack on tiny screens */
+  .wizard-summary { flex-direction: column; }
+  .wizard-summary__image { width: 100%; min-height: 120px; }
+
+  .wizard-terminal__card { padding: var(--space-6) var(--space-4); }
+
+  /* Progress: hide labels on tiny screens, keep bubbles */
+  .wizard-progress__label { display: none; }
+  .wizard-progress__line  { margin: 0 var(--space-1); }
+}

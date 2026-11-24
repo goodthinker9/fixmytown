@@ -1,8 +1,16 @@
 // Generic Zod validation middleware.
-// Usage: validate(schema)        -> validates req.body
-//        validate(schema, 'params') -> validates req.params, etc.
-// On success it replaces req[property] with the parsed data, which strips
-// unknown keys (prevents mass-assignment) and coerces types.
+// Usage: validate(schema)              -> validates req.body    (422 on failure)
+//        validate(schema, 'query')     -> validates req.query   (422 on failure)
+//        validate(schema, 'params')    -> validates req.params  (400 on failure)
+//
+// 'params' returns 400 because a bad route parameter (e.g. a non-UUID :id) is a
+// malformed request URL, not a semantic/business-rule violation. 422 is reserved
+// for valid-shape payloads that fail business rules (body/query validation).
+//
+// On success the parsed data is stored on req.validated[property] AND written
+// back to req[property] for body/params (strips unknown keys — mass-assignment
+// guard). Query strings are only stored on req.validated.query because Express
+// can expose req.query as a read-only getter.
 const AppError = require('../utils/AppError');
 
 const validate = (schema, property = 'body') => (req, _res, next) => {
@@ -13,16 +21,14 @@ const validate = (schema, property = 'body') => (req, _res, next) => {
       field: issue.path.join('.'),
       message: issue.message,
     }));
-    // 422 = semantically valid request, but failed business/validation rules
-    return next(new AppError('Validation failed', 422, details));
+    // 400 for route params (bad URL format), 422 for body/query (bad payload).
+    const statusCode = property === 'params' ? 400 : 422;
+    return next(new AppError('Validation failed', statusCode, details));
   }
 
   req.validated = req.validated || {};
   req.validated[property] = result.data;
 
-  // Replace the original for body/params (own writable props, strips unknown keys
-  // as a mass-assignment guard). For 'query' we skip the write-back — Express can
-  // expose req.query as a read-only getter, so handlers read req.validated.query.
   if (property !== 'query') {
     req[property] = result.data;
   }

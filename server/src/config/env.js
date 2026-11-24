@@ -16,6 +16,8 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY is required'),
   // Optional: if missing, AI features degrade gracefully (no crash).
   ANTHROPIC_API_KEY: z.string().optional(),
+  // AI model to use. Defaults to claude-haiku-5-5; override in .env if needed.
+  AI_MODEL: z.string().default('claude-haiku-5-5'),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -13,12 +13,14 @@ const router = express.Router();
 // --- Validation schemas ---
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(50),
-  email: z.string().email('Invalid email').toLowerCase(), // normalise email
-  password: z.string().min(6, 'Password must be at least 6 characters').max(72),
+  email: z.string().email('Invalid email').toLowerCase(),
+  // Raised from 6 to 8 — NIST SP 800-63B recommends at least 8 characters.
+  password: z.string().min(8, 'Password must be at least 8 characters').max(72),
 });
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email').toLowerCase(),
+  // Login keeps min(1) so a 7-char legacy password doesn't lock the user out.
   password: z.string().min(1, 'Password is required'),
 });
 
@@ -33,12 +35,7 @@ const authLimiter = rateLimit({
 
 router.use(authLimiter);
 
-router.post(
-  '/register',
-  validate(registerSchema),
-  sanitizeBody,
-  authController.register
-);
+router.post('/register', validate(registerSchema), sanitizeBody, authController.register);
 router.post('/login', validate(loginSchema), sanitizeBody, authController.login);
 router.get('/me', authRequired, authController.me);
 

@@ -14,22 +14,28 @@ const AppError = require('./utils/AppError');
 
 const app = express();
 
+// --- Trust proxy ---
+// Must be set BEFORE any middleware that reads req.ip (rate limiters, CORS).
+// '1' means we trust the first upstream proxy (Render, Railway, Heroku, etc.)
+// to have set X-Forwarded-For correctly, so rate limiters key on the real
+// client IP rather than the proxy's IP.
+app.set('trust proxy', 1);
+
 // --- Security headers ---
-// helmet sets ~15 safe HTTP headers (X-Frame-Options, HSTS, etc.). CSP is left
-// off (default helmet behaviour for a pure JSON API).
 app.use(helmet());
 
 // --- CORS ---
-// Accept requests only from the configured frontend origin. An explicit
-// allowedHeaders list prevents browsers from sending arbitrary headers.
-// credentials:true allows the Authorization header cross-origin.
+// Accept requests only from the configured frontend origin(s).
+// CORS_ORIGIN can be comma-separated for multiple origins.
 const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
 app.use(
   cors({
     origin: (origin, cb) => {
       // Allow requests with no origin (curl, Postman, server-to-server).
       if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-      cb(new Error(`CORS: origin ${origin} not allowed`));
+      // Return a proper AppError so the central error handler sends a consistent
+      // JSON 403 instead of a plain text "Error: CORS..." response.
+      cb(new AppError(`CORS: origin ${origin} not allowed`, 403));
     },
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -39,7 +45,7 @@ app.use(
 
 // --- Global rate limit ---
 // A broad 300 req/15 min ceiling per IP as a last-resort abuse guard.
-// Individual route groups (auth, AI) have their own tighter limits.
+// Individual route groups (auth, AI, report-create) have their own tighter limits.
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -51,12 +57,9 @@ app.use(
 );
 
 // --- Body parsing ---
-// Reject payloads larger than 1 MB.
 app.use(express.json({ limit: '1mb' }));
 
 // --- Health check ---
-// Returns service status and uptime. No auth — used by uptime monitors.
-// Also a quick smoke-test: if the process is running this responds.
 app.get('/api/health', (_req, res) =>
   res.json({
     status: 'ok',

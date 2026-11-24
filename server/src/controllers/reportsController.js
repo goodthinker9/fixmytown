@@ -126,8 +126,11 @@ const listReports = asyncHandler(async (req, res, next) => {
     filters.push(`status = $${filterParams.length}`);
   }
   if (search) {
-    filterParams.push(`%${search}%`);
-    filters.push(`title ilike $${filterParams.length}`);
+    // Escape ILIKE wildcards so a search for "50%" or "file_name" is treated
+    // as a literal string, not a pattern. The backslash is the PG escape char.
+    const escaped = search.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+    filterParams.push(`%${escaped}%`);
+    filters.push(`title ilike $${filterParams.length} escape '\\'`);
   }
 
   const whereClause = filters.length ? `where ${filters.join(' and ')}` : '';

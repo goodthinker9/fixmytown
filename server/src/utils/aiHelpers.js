@@ -18,9 +18,11 @@
 // In production you'd use tool_use for guaranteed schemas.
 
 const { getClient } = require('../config/claude');
+const env = require('../config/env');
 
 const TIMEOUT_MS = 10_000; // 10 s — if Claude doesn't respond, skip AI
-const MODEL = 'claude-3-haiku-20240307'; // cheapest fast model, good for JSON tasks
+// Model is read from env.AI_MODEL so it can be changed without a code deploy.
+const MODEL = env.AI_MODEL;
 
 // Wraps any Promise in an AbortController-style race with a timeout.
 const withTimeout = (promise) =>

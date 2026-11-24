@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import { ThumbsUp, ThumbsDown, ArrowLeft, Trash2, MapPin } from 'lucide-react';
 import '../utils/leafletIcons.js';
 import StatusBadge from '../components/StatusBadge.jsx';
+import { CategoryIcon } from '../utils/categoryIcons.jsx';
 import { getReport, toggleUpvote, deleteReport } from '../api/reports.js';
 import useAuth from '../hooks/useAuth.js';
 
@@ -11,14 +13,14 @@ export default function ReportDetail() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const flash = location.state?.flash; // one-shot success message
+  const flash = location.state?.flash;
 
   const [report, setReport] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [upvoted, setUpvoted] = useState(null); // unknown until the user clicks
+  const [upvoted, setUpvoted] = useState(null);
   const [voteCount, setVoteCount] = useState(0);
   const [voting, setVoting] = useState(false);
   const [voteError, setVoteError] = useState('');
@@ -71,7 +73,9 @@ export default function ReportDetail() {
       <div className="page report-detail">
         {flash && <div className="alert alert--success">{flash}</div>}
         <div className="alert alert--error">{error}</div>
-        <Link to="/" className="btn btn--link">Go back</Link>
+        <Link to="/" className="btn btn--ghost">
+          <ArrowLeft size={15} aria-hidden="true" /> Go back
+        </Link>
       </div>
     );
   }
@@ -83,10 +87,12 @@ export default function ReportDetail() {
 
   return (
     <div className="page report-detail">
-      {flash && <div className="alert alert--success">{flash}</div>}
-      {deleteError && <div className="alert alert--error">{deleteError}</div>}
+      {flash && <div className="alert alert--success" role="status">{flash}</div>}
+      {deleteError && <div className="alert alert--error" role="alert">{deleteError}</div>}
 
-      <Link to="/" className="back-link">← Back to reports</Link>
+      <Link to="/" className="back-link">
+        <ArrowLeft size={15} aria-hidden="true" /> Back to reports
+      </Link>
 
       <StatusBadge status={report.status} />
       <h1>{report.title}</h1>
@@ -101,24 +107,35 @@ export default function ReportDetail() {
       <p className="report-detail__desc">{report.description}</p>
 
       <div className="report-detail__tags">
-        <span className="chip">📍 {report.category}</span>
-        <span className="chip">📐 {report.latitude.toFixed(4)}, {report.longitude.toFixed(4)}</span>
+        <span className="chip">
+          <CategoryIcon category={report.category} size={13} />
+          {report.category}
+        </span>
+        <span className="chip">
+          <MapPin size={13} aria-hidden="true" />
+          {report.latitude.toFixed(4)}, {report.longitude.toFixed(4)}
+        </span>
       </div>
 
       {/* Upvote */}
       <div className="vote">
         <button
           type="button"
-          className="btn btn--primary"
+          className={`btn ${upvoted ? 'btn--primary' : 'btn--ghost'} btn--icon`}
           onClick={handleUpvote}
           disabled={!user || voting}
-          title={!user ? 'Log in to upvote' : ''}
+          aria-label={upvoted ? 'Remove upvote' : 'Upvote this report'}
+          aria-pressed={upvoted ?? false}
+          title={!user ? 'Log in to upvote' : undefined}
         >
-          {upvoted ? '▲ Upvoted' : '△ Upvote'}
+          {upvoted
+            ? <ThumbsDown size={15} aria-hidden="true" />
+            : <ThumbsUp size={15} aria-hidden="true" />}
+          {upvoted ? 'Upvoted' : 'Upvote'}
         </button>
-        <span className="vote__count">{voteCount}</span>
+        <span className="vote__count" aria-label={`${voteCount} upvotes`}>{voteCount}</span>
         {!user && <span className="vote__hint">Log in to upvote.</span>}
-        {voteError && <span className="vote__error">{voteError}</span>}
+        {voteError && <span className="vote__error" role="alert">{voteError}</span>}
       </div>
 
       {/* Location mini-map */}
@@ -144,13 +161,13 @@ export default function ReportDetail() {
         <ol className="timeline">
           {history.map((h) => (
             <li key={h.id} className="timeline__item">
-              <div className="timeline__dot" />
+              <div className="timeline__dot" aria-hidden="true" />
               <div className="timeline__content">
                 <div className="timeline__row">
                   <StatusBadge status={h.new_status} />
-                  <span className="timeline__date">
+                  <time className="timeline__date" dateTime={h.created_at}>
                     {new Date(h.created_at).toLocaleString()}
-                  </span>
+                  </time>
                 </div>
                 {h.old_status && (
                   <div className="timeline__from">from {h.old_status.replace('_', ' ')}</div>
@@ -163,10 +180,16 @@ export default function ReportDetail() {
         </ol>
       )}
 
-      {/* Delete (owner / admin only) */}
+      {/* Delete */}
       {canDelete && (
         <div className="report-detail__actions">
-          <button type="button" className="btn btn--danger" onClick={handleDelete} disabled={deleting}>
+          <button
+            type="button"
+            className="btn btn--danger btn--icon"
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            <Trash2 size={15} aria-hidden="true" />
             {deleting ? 'Deleting…' : 'Delete report'}
           </button>
         </div>

@@ -1,20 +1,21 @@
-// Map view: all matching reports as colored dots (CircleMarker — no marker
-// image needed). A popup shows the title, category and a link to the detail.
+// Map view: reports as colored CircleMarkers. Colors come from CSS token
+// values so they stay in sync with the design system.
 import { useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Link } from 'react-router-dom';
 import '../utils/leafletIcons.js';
 import StatusBadge from './StatusBadge.jsx';
+import { CategoryIcon } from '../utils/categoryIcons.jsx';
+import { ThumbsUp } from 'lucide-react';
 
+// Status colors pulled from CSS design token values (must match --status-* vars).
 const STATUS_COLORS = {
-  reported: '#f59e0b',
-  in_progress: '#2563eb',
-  resolved: '#16a34a',
+  reported:    '#d97706', // --status-reported-fg
+  in_progress: '#2563eb', // --status-in-progress-fg
+  resolved:    '#16a34a', // --status-resolved-fg
 };
 
-// Fit the map to every marker so all reports are visible at once. (The
-// `center` prop only applies on first render, so we use useMap to move it.)
 function FitBounds({ reports }) {
   const map = useMap();
   useEffect(() => {
@@ -57,8 +58,16 @@ export default function ReportMap({ reports, loading, error }) {
             <div className="map-popup">
               <StatusBadge status={r.status} />
               <div className="map-popup__title">{r.title}</div>
-              <div className="map-popup__meta">{r.category} · ▲ {r.upvote_count}</div>
-              <Link to={`/reports/${r.id}`} className="btn btn--link btn--block">View report</Link>
+              <div className="map-popup__meta">
+                <CategoryIcon category={r.category} size={13} />
+                {r.category}
+                &nbsp;·&nbsp;
+                <ThumbsUp size={12} aria-hidden="true" />
+                {r.upvote_count}
+              </div>
+              <Link to={`/reports/${r.id}`} className="btn btn--ghost btn--block btn--sm">
+                View report
+              </Link>
             </div>
           </Popup>
         </CircleMarker>

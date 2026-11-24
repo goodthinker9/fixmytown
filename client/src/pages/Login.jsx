@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import Logo from '../components/Logo.jsx';
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
@@ -8,7 +9,6 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  // Where to go after login: the page the user was redirected from, or the dashboard.
   const from = location.state?.from?.pathname || '/dashboard';
 
   const [form, setForm] = useState({ email: '', password: '' });
@@ -25,9 +25,8 @@ export default function Login() {
     return Object.keys(e).length === 0;
   };
 
-  const handleChange = (ev) => {
+  const handleChange = (ev) =>
     setForm((f) => ({ ...f, [ev.target.name]: ev.target.value }));
-  };
 
   const handleSubmit = async (ev) => {
     ev.preventDefault();
@@ -47,9 +46,12 @@ export default function Login() {
   return (
     <div className="auth-page">
       <form className="card auth-form" onSubmit={handleSubmit} noValidate>
+        <div className="auth-form__logo">
+          <Logo size={36} />
+        </div>
         <h1 className="auth-form__title">Log in</h1>
 
-        {serverError && <div className="alert alert--error">{serverError}</div>}
+        {serverError && <div className="alert alert--error" role="alert">{serverError}</div>}
 
         <div className="field">
           <label className="field__label" htmlFor="email">Email</label>
@@ -61,8 +63,9 @@ export default function Login() {
             value={form.email}
             onChange={handleChange}
             className={errors.email ? 'input input--error' : 'input'}
+            aria-describedby={errors.email ? 'email-error' : undefined}
           />
-          {errors.email && <span className="field__error">{errors.email}</span>}
+          {errors.email && <span id="email-error" className="field__error" role="alert">{errors.email}</span>}
         </div>
 
         <div className="field">
@@ -75,8 +78,9 @@ export default function Login() {
             value={form.password}
             onChange={handleChange}
             className={errors.password ? 'input input--error' : 'input'}
+            aria-describedby={errors.password ? 'password-error' : undefined}
           />
-          {errors.password && <span className="field__error">{errors.password}</span>}
+          {errors.password && <span id="password-error" className="field__error" role="alert">{errors.password}</span>}
         </div>
 
         <button type="submit" className="btn btn--primary btn--block" disabled={submitting}>

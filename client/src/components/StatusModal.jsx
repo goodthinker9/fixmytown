@@ -1,7 +1,5 @@
-// Modal for an admin to change a report's status and add an optional note.
-// The modal owns the API call (and its loading/error state); on success it
-// tells the parent (so the parent can toast + refresh) and closes itself.
 import { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import { updateReportStatus } from '../api/admin.js';
 
 const STATUSES = [
@@ -16,7 +14,6 @@ export default function StatusModal({ report, onClose, onSaved }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Reset the form whenever a different report is opened.
   useEffect(() => {
     setStatus(report.status);
     setNote('');
@@ -32,7 +29,7 @@ export default function StatusModal({ report, onClose, onSaved }) {
         status,
         note: note.trim() || undefined,
       });
-      onSaved(status); // parent shows the toast + refreshes
+      onSaved(status);
       onClose();
     } catch (err) {
       setError(err.response?.data?.error || 'Could not update status.');
@@ -48,12 +45,17 @@ export default function StatusModal({ report, onClose, onSaved }) {
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Change report status"
+        aria-labelledby="modal-title"
       >
         <div className="modal__header">
-          <h3>Change status</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Close">
-            ×
+          <h3 id="modal-title">Change status</h3>
+          <button
+            type="button"
+            className="btn btn--ghost btn--icon-only"
+            onClick={onClose}
+            aria-label="Close dialog"
+          >
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
         <p className="modal__report">{report.title}</p>
@@ -62,9 +64,9 @@ export default function StatusModal({ report, onClose, onSaved }) {
 
         <form onSubmit={handleSubmit}>
           <div className="field">
-            <label className="field__label" htmlFor="status">New status</label>
+            <label className="field__label" htmlFor="modal-status">New status</label>
             <select
-              id="status"
+              id="modal-status"
               className="input"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
@@ -75,9 +77,9 @@ export default function StatusModal({ report, onClose, onSaved }) {
             </select>
           </div>
           <div className="field">
-            <label className="field__label" htmlFor="note">Note (optional)</label>
+            <label className="field__label" htmlFor="modal-note">Note (optional)</label>
             <textarea
-              id="note"
+              id="modal-note"
               className="input"
               rows={3}
               value={note}
@@ -86,7 +88,7 @@ export default function StatusModal({ report, onClose, onSaved }) {
             />
           </div>
           <div className="modal__actions">
-            <button type="button" className="btn btn--link" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn--ghost" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn--primary" disabled={submitting}>
               {submitting ? 'Saving…' : 'Save'}
             </button>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ClipboardList, Wrench, CheckCircle, Timer, Sparkles } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -12,14 +13,16 @@ import Pagination from '../components/Pagination.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import StatusModal from '../components/StatusModal.jsx';
 import Toast from '../components/Toast.jsx';
+import { ThumbsUp } from 'lucide-react';
 import { getStats, getWeeklySummary } from '../api/admin.js';
 import { listReports } from '../api/reports.js';
 
 const LIMIT = 10;
+// Status colors sourced from the CSS design tokens (must stay in sync with --status-* vars).
 const STATUS_COLORS_HEX = {
-  reported: '#f59e0b',
+  reported:    '#d97706',
   in_progress: '#2563eb',
-  resolved: '#16a34a',
+  resolved:    '#16a34a',
 };
 
 export default function Admin() {
@@ -138,11 +141,11 @@ export default function Admin() {
 
       {/* Summary cards */}
       <div className="summary-grid">
-        <SummaryCard icon="📋" label="Total reports" value={statsLoading ? '…' : totalReports} />
-        <SummaryCard icon="🔧" label="In progress" value={statsLoading ? '…' : inProgress} accent="blue" />
-        <SummaryCard icon="✅" label="Resolved" value={statsLoading ? '…' : resolved} accent="green" />
+        <SummaryCard icon={<ClipboardList size={20} aria-hidden="true" />} label="Total reports"      value={statsLoading ? '…' : totalReports} />
+        <SummaryCard icon={<Wrench       size={20} aria-hidden="true" />} label="In progress"         value={statsLoading ? '…' : inProgress}   accent="blue" />
+        <SummaryCard icon={<CheckCircle  size={20} aria-hidden="true" />} label="Resolved"             value={statsLoading ? '…' : resolved}     accent="green" />
         <SummaryCard
-          icon="⏱"
+          icon={<Timer size={20} aria-hidden="true" />}
           label="Avg days to resolve"
           value={statsLoading ? '…' : avgDays == null ? '—' : avgDays.toFixed(1)}
           accent="amber"
@@ -219,11 +222,12 @@ export default function Admin() {
           <h2>Weekly summary</h2>
           <button
             type="button"
-            className="btn btn--primary"
+            className="btn btn--primary btn--icon"
             onClick={handleGenerateSummary}
             disabled={summaryLoading}
           >
-            {summaryLoading ? 'Generating…' : '✨ Generate AI summary'}
+            <Sparkles size={15} aria-hidden="true" />
+            {summaryLoading ? 'Generating…' : 'Generate AI summary'}
           </button>
         </div>
         {summaryError && <div className="alert alert--error">{summaryError}</div>}
@@ -269,7 +273,9 @@ export default function Admin() {
                     <th>Report</th>
                     <th>Category</th>
                     <th>Status</th>
-                    <th>▲</th>
+                    <th>
+                      <ThumbsUp size={13} aria-label="Upvotes" />
+                    </th>
                     <th>Created</th>
                     <th aria-label="Actions" />
                   </tr>

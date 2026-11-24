@@ -11,8 +11,10 @@
     "lint:fix": "eslint src --ext .js,.jsx --fix"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
     "axios": "^1.7.7",
     "leaflet": "^1.9.4",
+    "lucide-react": "^1.79.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-leaflet": "^4.2.1",

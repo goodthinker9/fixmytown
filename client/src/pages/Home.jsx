@@ -1,21 +1,26 @@
 /**
- * Home — UI-E2
+ * Home — UI-E3
  *
- * Sections:
- *   1. Hero   — full-bleed photo + dark gradient + animated headline + search card
- *   2. Impact — live stats with count-up animation (Reveal scroll-trigger)
- *   3. Browse — split list / map  (unchanged from UI-B-Revised)
- *   4. How it works (unchanged)
+ * Page order (top → bottom):
+ *   1.  Hero               — photo + dark overlay + search card  (UI-E2, unchanged)
+ *   2.  Impact strip       — live API stats with count-up        (UI-E2, unchanged)
+ *   3.  Category grid      — photo tiles + live counts
+ *   4.  Browse / map       — split list + map                    (UI-B-Revised, unchanged)
+ *   5.  How it works       — 3 steps + animated connecting line
+ *   6.  Community / trust  — split photo + honest copy
+ *   7.  CTA band           — gradient band + two buttons
  */
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useInView } from 'framer-motion';
+import { motion, useInView } from 'framer-motion';
 import {
   Search, LocateFixed, Loader2, List, Map as MapIcon,
   X, Camera, ThumbsUp, CheckCircle2,
   FileText, AlertTriangle, Percent,
   ShieldCheck, Users, Sparkles,
+  Droplets, Zap, Construction, Trash2, ShieldAlert, CircleHelp,
+  ArrowRight,
 } from 'lucide-react';
 
 import ReportFilters from '../components/ReportFilters.jsx';
@@ -25,11 +30,11 @@ import Pagination    from '../components/Pagination.jsx';
 import Skeleton      from '../components/Skeleton.jsx';
 import Reveal        from '../components/Reveal.jsx';
 
-import { listReports }    from '../api/reports.js';
-import { getPublicStats } from '../api/stats.js';
-import { useDebounce }    from '../hooks/useDebounce.js';
-import { useNominatim }   from '../hooks/useNominatim.js';
-import { useCountUp }     from '../hooks/useCountUp.js';
+import { listReports }      from '../api/reports.js';
+import { getPublicStats }   from '../api/stats.js';
+import { useDebounce }      from '../hooks/useDebounce.js';
+import { useNominatim }     from '../hooks/useNominatim.js';
+import { useCountUp }       from '../hooks/useCountUp.js';
 import { useReducedMotion } from '../hooks/useReducedMotion.js';
 import useAuth from '../hooks/useAuth.js';
 
@@ -53,8 +58,7 @@ function GeocoderBox({ onSelect }) {
 
   const select = (item) => {
     setInput(item.label.split(',').slice(0, 2).join(','));
-    setChosen(true);
-    setFocused(false);
+    setChosen(true); setFocused(false);
     onSelect({ lat: item.lat, lng: item.lng });
   };
   const clear = () => { setInput(''); setChosen(false); };
@@ -65,15 +69,13 @@ function GeocoderBox({ onSelect }) {
       <div className="geocoder__input-wrap">
         <Search size={17} className="geocoder__icon" aria-hidden="true" />
         <input
-          type="search"
-          className="geocoder__input"
+          type="search" className="geocoder__input"
           placeholder="Search an address or area…"
           value={input}
           onChange={(e) => { setInput(e.target.value); setChosen(false); }}
           onFocus={() => setFocused(true)}
           aria-label="Search an address or area to find nearby reports"
-          aria-autocomplete="list"
-          aria-expanded={showDropdown}
+          aria-autocomplete="list" aria-expanded={showDropdown}
         />
         {loading && <Loader2 size={15} className="geocoder__spinner spin" aria-label="Searching…" />}
         {input && !loading && (
@@ -114,10 +116,7 @@ function ImpactStat({ value, suffix = '', label, color, loading }) {
         {loading ? (
           <span className="skeleton skeleton--stat-lg" aria-hidden="true" />
         ) : (
-          <>
-            {count.toLocaleString()}
-            {suffix && <span className="impact-stat__suffix">{suffix}</span>}
-          </>
+          <>{count.toLocaleString()}{suffix && <span className="impact-stat__suffix">{suffix}</span>}</>
         )}
       </div>
       <div className="impact-stat__label">{label}</div>
@@ -142,62 +141,321 @@ function ImpactStrip() {
     <section id="impact" className="impact-strip" aria-labelledby="impact-heading">
       <div className="container">
         <Reveal>
-          <h2 id="impact-heading" className="impact-strip__title">
-            Real problems. Real fixes.
-          </h2>
+          <h2 id="impact-heading" className="impact-strip__title">Real problems. Real fixes.</h2>
         </Reveal>
         <div className="impact-grid">
-          <Reveal delay={0.05}>
-            <ImpactStat value={stats?.total}       label="Reports submitted" color="blue"  loading={loading} />
-          </Reveal>
-          <Reveal delay={0.10}>
-            <ImpactStat value={stats?.resolved}    label="Issues resolved"   color="green" loading={loading} />
-          </Reveal>
-          <Reveal delay={0.15}>
-            <ImpactStat value={stats?.in_progress} label="In progress"       color="amber" loading={loading} />
-          </Reveal>
-          <Reveal delay={0.20}>
-            <ImpactStat value={resolvedRate ?? 0}  label="Resolved rate" suffix="%" color="teal" loading={loading} />
-          </Reveal>
+          <Reveal delay={0.05}><ImpactStat value={stats?.total}       label="Reports submitted" color="blue"  loading={loading} /></Reveal>
+          <Reveal delay={0.10}><ImpactStat value={stats?.resolved}    label="Issues resolved"   color="green" loading={loading} /></Reveal>
+          <Reveal delay={0.15}><ImpactStat value={stats?.in_progress} label="In progress"       color="amber" loading={loading} /></Reveal>
+          <Reveal delay={0.20}><ImpactStat value={resolvedRate ?? 0}  label="Resolved rate" suffix="%" color="teal" loading={loading} /></Reveal>
         </div>
       </div>
     </section>
   );
 }
 
-// ── How it works ──────────────────────────────────────────────────────────────
-const HOW_STEPS = [
-  { icon: Camera,       step: '01', title: 'Report a problem',
-    desc: 'Drop a pin, snap a photo, describe what you see. Takes 60 seconds.' },
-  { icon: ThumbsUp,     step: '02', title: 'Community upvotes',
-    desc: 'Neighbours upvote the issues they share. High-priority problems rise to the top.' },
-  { icon: CheckCircle2, step: '03', title: 'Track until fixed',
-    desc: 'Admins update the status as work progresses. Every change is logged.' },
+// ═══════════════════════════════════════════════════════════════════════════════
+// CATEGORIES GRID
+// Each tile has a photo, dark overlay, icon, label, and the real live count.
+// Clicking applies the category filter and scrolls to #browse.
+// ═══════════════════════════════════════════════════════════════════════════════
+const CATEGORY_TILES = [
+  {
+    value: 'water',
+    label: 'Water',
+    icon: Droplets,
+    img: '/images/water.svg',
+    alt: 'Water infrastructure — pipes, taps and water points in a town',
+    color: '#2563eb',
+  },
+  {
+    value: 'roads',
+    label: 'Roads',
+    icon: Construction,
+    img: '/images/roads.svg',
+    alt: 'Road surface with a pothole on a town street',
+    color: '#64748b',
+  },
+  {
+    value: 'garbage',
+    label: 'Garbage',
+    icon: Trash2,
+    img: '/images/garbage.svg',
+    alt: 'Overfull rubbish bins on a street corner',
+    color: '#16a34a',
+  },
+  {
+    value: 'electricity',
+    label: 'Electricity',
+    icon: Zap,
+    img: '/images/electricity.svg',
+    alt: 'Power lines and electrical poles in a neighbourhood',
+    color: '#d97706',
+  },
+  {
+    value: 'safety',
+    label: 'Safety',
+    icon: ShieldAlert,
+    img: null,
+    color: '#dc2626',
+  },
+  {
+    value: 'other',
+    label: 'Other',
+    icon: CircleHelp,
+    img: null,
+    color: '#7c3aed',
+  },
 ];
 
-function HowItWorks() {
+function CategoryGrid({ stats, statsLoading, onCategoryClick }) {
   return (
-    <section className="how-section" aria-labelledby="how-heading" id="how">
-      <Reveal>
-        <h2 id="how-heading" className="how-section__title">How it works</h2>
-      </Reveal>
-      <div className="how-steps">
-        {HOW_STEPS.map(({ icon: Icon, step, title, desc }, i) => (
-          <Reveal key={step} delay={i * 0.08}>
-            <div className="how-step">
-              <div className="how-step__number" aria-hidden="true">{step}</div>
-              <div className="how-step__icon" aria-hidden="true"><Icon size={22} /></div>
-              <h3 className="how-step__title">{title}</h3>
-              <p className="how-step__desc">{desc}</p>
-            </div>
-          </Reveal>
-        ))}
+    <section className="section-spacing" aria-labelledby="categories-heading">
+      <div className="container">
+        <Reveal>
+          <div className="section-header">
+            <h2 id="categories-heading" className="section-title">Browse by category</h2>
+            <p className="section-sub">
+              Every report is tagged so issues reach the right team faster.
+            </p>
+          </div>
+        </Reveal>
+
+        <div className="cat-grid" role="list">
+          {CATEGORY_TILES.map(({ value, label, icon: Icon, img, alt, color }, i) => {
+            const count = stats?.by_category?.[value];
+            return (
+              <Reveal key={value} delay={i * 0.06}>
+                <button
+                  type="button"
+                  className={`cat-tile${!img ? ' cat-tile--icon-only' : ''}`}
+                  style={!img ? { '--cat-color': color } : undefined}
+                  onClick={() => onCategoryClick(value)}
+                  aria-label={`${label} — ${count ?? '…'} report${count !== 1 ? 's' : ''}. Click to filter.`}
+                  role="listitem"
+                >
+                  {img ? (
+                    <>
+                      <img
+                        src={img}
+                        alt={alt}
+                        className="cat-tile__photo"
+                        loading="lazy"
+                        width="400"
+                        height="270"
+                      />
+                      <div className="cat-tile__overlay" />
+                    </>
+                  ) : (
+                    <div className="cat-tile__bg" aria-hidden="true" />
+                  )}
+                  <div className="cat-tile__content">
+                    <span className="cat-tile__icon" aria-hidden="true">
+                      <Icon size={img ? 26 : 32} />
+                    </span>
+                    <span className="cat-tile__label">{label}</span>
+                    <span className="cat-tile__count" aria-hidden="true">
+                      {statsLoading
+                        ? <span className="skeleton skeleton--count" />
+                        : count ?? '—'}
+                    </span>
+                  </div>
+                </button>
+              </Reveal>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
 }
 
-// ── Main page component ───────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// HOW IT WORKS (#how)
+// 3 steps connected by a line that draws itself as the section scrolls in.
+// ═══════════════════════════════════════════════════════════════════════════════
+const HOW_STEPS = [
+  {
+    step: '01',
+    icon: Camera,
+    title: 'Spot it, report it',
+    desc: 'Drop a pin on the map, add a photo and describe the problem. The whole process takes under 60 seconds on any phone.',
+  },
+  {
+    step: '02',
+    icon: ThumbsUp,
+    title: 'The community weighs in',
+    desc: 'Neighbours upvote the issues they share. High vote counts signal urgency so the most critical problems get attention first.',
+  },
+  {
+    step: '03',
+    icon: CheckCircle2,
+    title: 'Track it to resolution',
+    desc: 'Admins update the status as work progresses — in progress, then resolved. Every change is timestamped and public.',
+  },
+];
+
+function HowItWorks() {
+  const lineRef    = useRef(null);
+  const sectionRef = useRef(null);
+  const inView     = useInView(sectionRef, { once: true, margin: '-100px' });
+  const reduced    = useReducedMotion();
+
+  return (
+    <section
+      id="how"
+      className="section-spacing how-section-v2"
+      aria-labelledby="how-heading"
+      ref={sectionRef}
+    >
+      <div className="container">
+        <Reveal>
+          <div className="section-header">
+            <h2 id="how-heading" className="section-title">How it works</h2>
+            <p className="section-sub">Three simple steps, completely transparent at every stage.</p>
+          </div>
+        </Reveal>
+
+        <div className="how-v2__steps">
+          {/* The connecting line lives here as a sibling of the step cards,
+              spanning the full width. We animate its scaleX from 0 → 1. */}
+          <div className="how-v2__line-track" aria-hidden="true">
+            <motion.div
+              className="how-v2__line-fill"
+              initial={{ scaleX: 0 }}
+              animate={inView ? { scaleX: 1 } : { scaleX: 0 }}
+              transition={{
+                duration: reduced ? 0 : 1.1,
+                delay:    reduced ? 0 : 0.3,
+                ease: [0.25, 0.46, 0.45, 0.94],
+              }}
+              style={{ transformOrigin: 'left center' }}
+            />
+          </div>
+
+          {HOW_STEPS.map(({ step, icon: Icon, title, desc }, i) => (
+            <Reveal key={step} delay={i * 0.12}>
+              <div className="how-v2__step">
+                <div className="how-v2__bubble" aria-hidden="true">
+                  <span className="how-v2__step-num">{step}</span>
+                  <div className="how-v2__icon-wrap">
+                    <Icon size={24} />
+                  </div>
+                </div>
+                <h3 className="how-v2__title">{title}</h3>
+                <p className="how-v2__desc">{desc}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMMUNITY / TRUST  (#impact)
+// Split layout: photo left, honest text right. No invented stats or testimonials.
+// ═══════════════════════════════════════════════════════════════════════════════
+function CommunitySection() {
+  return (
+    <section
+      id="community"
+      className="section-spacing community-section"
+      aria-labelledby="community-heading"
+    >
+      <div className="container">
+        <div className="community-split">
+          {/* Photo */}
+          <Reveal className="community-split__image-wrap">
+            <img
+              src="/images/community.svg"
+              alt="Silhouette of a residential neighbourhood at dusk, with lit windows suggesting community life"
+              className="community-split__image"
+              loading="lazy"
+              width="960"
+              height="640"
+            />
+          </Reveal>
+
+          {/* Text */}
+          <div className="community-split__text">
+            <Reveal>
+              <span className="community-eyebrow">Why transparency matters</span>
+              <h2 id="community-heading" className="section-title">
+                Public tracking builds public trust
+              </h2>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <p className="community-body">
+                When a pothole gets reported, every resident can see it on the map. When an admin
+                changes the status to "in progress", that change is timestamped and visible to
+                everyone — not buried in a helpdesk ticket.
+              </p>
+            </Reveal>
+            <Reveal delay={0.12}>
+              <p className="community-body">
+                Upvotes tell decision-makers which problems affect the most people, without anyone
+                needing to make a phone call or write a letter. The data is public, the history is
+                permanent, and anyone can see exactly what has — and hasn't — been fixed.
+              </p>
+            </Reveal>
+            <Reveal delay={0.18}>
+              <div className="community-actions">
+                <Link to="/register" className="btn btn--primary btn--icon">
+                  Report an issue
+                  <ArrowRight size={16} aria-hidden="true" />
+                </Link>
+                <Link to="/login" className="btn btn--ghost">
+                  Already a member? Log in
+                </Link>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CTA BAND
+// ═══════════════════════════════════════════════════════════════════════════════
+function CtaBand() {
+  return (
+    <section className="cta-band" aria-labelledby="cta-heading">
+      <div className="container cta-band__inner">
+        <Reveal>
+          <h2 id="cta-heading" className="cta-band__title">
+            Help fix your town today
+          </h2>
+          <p className="cta-band__sub">
+            Reporting takes 60 seconds. Every report makes the data more useful for everyone.
+          </p>
+          <div className="cta-band__actions">
+            <Link to="/register" className="btn btn--white btn--lg btn--icon">
+              Report an issue
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+            <button
+              type="button"
+              className="btn btn--white-ghost btn--lg"
+              onClick={() => {
+                document.getElementById('browse')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            >
+              Browse the map
+            </button>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN PAGE
+// ═══════════════════════════════════════════════════════════════════════════════
 export default function Home() {
   const { user }  = useAuth();
   const reduced   = useReducedMotion();
@@ -205,7 +463,7 @@ export default function Home() {
   // map/list mobile toggle
   const [mobileView, setMobileView] = useState('map');
 
-  // filters
+  // filters — shared across browse section and category grid
   const [category,    setCategory]    = useState('');
   const [status,      setStatus]      = useState('');
   const [sort,        setSort]        = useState('newest');
@@ -225,22 +483,31 @@ export default function Home() {
   const listRef = useRef(null);
 
   // reports
-  const [reports,   setReports]   = useState([]);
-  const [total,     setTotal]     = useState(0);
+  const [reports,    setReports]    = useState([]);
+  const [total,      setTotal]      = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [listLoading, setListLoading] = useState(true);
   const [listError,   setListError]   = useState('');
+
+  // global stats (shared between ImpactStrip and CategoryGrid)
+  const [globalStats,   setGlobalStats]   = useState(null);
+  const [statsLoading,  setStatsLoading]  = useState(true);
+
+  useEffect(() => {
+    getPublicStats()
+      .then(setGlobalStats)
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
+  }, []);
 
   const applyFilter = (setter) => (v) => { setter(v); setPage(1); };
   const onCategory  = applyFilter(setCategory);
   const onStatus    = applyFilter(setStatus);
   const onSearch    = applyFilter(setSearchInput);
-
   const onSort = (v) => {
     setSort(v); setPage(1);
     if (v === 'distance' && !userCoords) requestGeoLocation();
   };
-
   const clearFilters = () => {
     setCategory(''); setStatus(''); setSort('newest'); setSearchInput('');
     setUserCoords(null); setPage(1);
@@ -297,11 +564,16 @@ export default function Home() {
     if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [activeId]);
 
-  // Framer-motion variants for the hero entrance stagger.
-  // The hero is "above the fold" so we use `initial` + `animate`, NOT `whileInView`.
+  // Category tile click: set filter and scroll to #browse
+  const handleCategoryClick = (cat) => {
+    setCategory(cat); setPage(1);
+    document.getElementById('browse')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Hero entrance variants
   const heroVariants = {
-    hidden:   { opacity: 0 },
-    visible:  { opacity: 1, transition: { staggerChildren: reduced ? 0 : 0.14, delayChildren: reduced ? 0 : 0.1 } },
+    hidden:  { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: reduced ? 0 : 0.14, delayChildren: reduced ? 0 : 0.1 } },
   };
   const heroItemVariants = {
     hidden:  { opacity: 0, y: reduced ? 0 : 28 },
@@ -310,13 +582,9 @@ export default function Home() {
 
   return (
     <>
-      {/* ══════════════════════════════════════════════════════════════
-          HERO
-      ══════════════════════════════════════════════════════════════ */}
+      {/* ══════ 1. HERO ══════ */}
       <section className="hero2" aria-label="Welcome to FixMyTown">
-        {/* ── Background photo with Ken Burns zoom ── */}
         <div className="hero2__bg" aria-hidden="true">
-          {/* width/height set so the browser can reserve space and avoid CLS */}
           <img
             src="/images/hero.svg"
             alt=""
@@ -326,24 +594,15 @@ export default function Home() {
             width="1920"
             height="1080"
           />
-          {/* Dark gradient overlay — ensures text contrast ≥ 4.5:1 on WCAG AA */}
           <div className="hero2__overlay" />
         </div>
 
-        {/* ── Animated content ── */}
-        <motion.div
-          className="hero2__inner"
-          variants={heroVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {/* Badge */}
+        <motion.div className="hero2__inner" variants={heroVariants} initial="hidden" animate="visible">
           <motion.div variants={heroItemVariants} className="hero2__badge">
             <span className="hero2__badge-dot" aria-hidden="true" />
             Community problem reporting
           </motion.div>
 
-          {/* Headline */}
           <motion.h1 variants={heroItemVariants} className="hero2__headline">
             See a problem in your town?{' '}
             <span className="hero2__headline--accent">
@@ -351,13 +610,11 @@ export default function Home() {
             </span>
           </motion.h1>
 
-          {/* Supporting sentence */}
           <motion.p variants={heroItemVariants} className="hero2__sub">
             Search for your area, drop a pin on the problem, and let the whole
             community track it to resolution — for free.
           </motion.p>
 
-          {/* Trust chips */}
           <motion.ul variants={heroItemVariants} className="hero2__chips" aria-label="Key features">
             {TRUST_CHIPS.map(({ icon: Icon, label }) => (
               <li key={label} className="hero2__chip">
@@ -367,10 +624,8 @@ export default function Home() {
             ))}
           </motion.ul>
 
-          {/* ── Search card (overlaps hero bottom) ── */}
           <motion.div variants={heroItemVariants} className="hero2__search-card" role="search">
             <GeocoderBox onSelect={handleGeocoderSelect} />
-
             <div className="hero2__search-row">
               <button
                 type="button"
@@ -384,35 +639,33 @@ export default function Home() {
                   : <LocateFixed size={16} aria-hidden="true" />}
                 {geoLoading ? 'Locating…' : 'Use my location'}
               </button>
-
               <button
                 type="button"
                 className="btn btn--primary hero2__search-btn"
-                onClick={() => {
-                  const el = document.getElementById('browse');
-                  el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }}
+                onClick={() => document.getElementById('browse')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               >
                 <Search size={16} aria-hidden="true" />
                 Search reports
               </button>
             </div>
-
-            {geoError && (
-              <p className="hero2__geo-error" role="alert">{geoError}</p>
-            )}
+            {geoError && <p className="hero2__geo-error" role="alert">{geoError}</p>}
           </motion.div>
         </motion.div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════════
-          IMPACT STRIP
-      ══════════════════════════════════════════════════════════════ */}
+      {/* ══════ 2. IMPACT STRIP ══════ */}
       <ImpactStrip />
 
+      {/* ══════ 3. CATEGORY GRID ══════ */}
+      <CategoryGrid
+        stats={globalStats}
+        statsLoading={statsLoading}
+        onCategoryClick={handleCategoryClick}
+      />
+
+      {/* ══════ 4. BROWSE / MAP ══════ */}
       <div className="container">
-        {/* ── Split layout: filters+list LEFT, map RIGHT ── */}
-        <section id="browse" className="civic-browse" aria-label="Browse reports">
+        <section id="browse" className="civic-browse section-spacing" aria-label="Browse reports">
           {/* Mobile toggle */}
           <div className="civic-browse__mobile-toggle" aria-label="Switch view" role="group">
             <button
@@ -446,14 +699,12 @@ export default function Home() {
                   <span className="browse__count">{total} report{total !== 1 ? 's' : ''}</span>
                 )}
               </div>
-
               <ReportFilters
                 category={category} status={status} sort={sort} searchInput={searchInput}
                 onCategory={onCategory} onStatus={onStatus} onSort={onSort}
                 onSearch={onSearch} onClear={clearFilters}
                 showDistanceSort={true}
               />
-
               <div className="civic-list-scroll" ref={listRef}>
                 {listLoading ? (
                   <Skeleton count={4} compact />
@@ -478,7 +729,6 @@ export default function Home() {
                   ))
                 )}
               </div>
-
               {totalPages > 1 && !listLoading && (
                 <div className="civic-list-pagination">
                   <Pagination page={page} totalPages={totalPages} onChange={setPage} />
@@ -491,13 +741,9 @@ export default function Home() {
               aria-label="Reports map"
             >
               <ReportMap
-                reports={reports}
-                loading={listLoading}
-                error={listError}
-                center={mapCenter}
-                zoom={mapZoom}
-                activeId={activeId}
-                onMarkerClick={handleMarkerClick}
+                reports={reports} loading={listLoading} error={listError}
+                center={mapCenter} zoom={mapZoom}
+                activeId={activeId} onMarkerClick={handleMarkerClick}
               />
               <p className="map-attribution">
                 Map data ©{' '}
@@ -509,10 +755,16 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        {/* ── How it works ── */}
-        <HowItWorks />
       </div>
+
+      {/* ══════ 5. HOW IT WORKS ══════ */}
+      <HowItWorks />
+
+      {/* ══════ 6. COMMUNITY / TRUST ══════ */}
+      <CommunitySection />
+
+      {/* ══════ 7. CTA BAND ══════ */}
+      <CtaBand />
     </>
   );
 }

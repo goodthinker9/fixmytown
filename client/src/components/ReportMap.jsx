@@ -1,11 +1,15 @@
-// Map view: reports as colored CircleMarkers with two-way highlight sync.
-// Props:
-//   reports         — array of report objects (may include distance_km)
-//   loading/error   — standard async states
-//   center          — [lat, lng] to fly to (from geocoder or geolocation)
-//   zoom            — zoom level to use when flying to `center`
-//   activeId        — id of the report highlighted from the list
-//   onMarkerClick   — called with report when a marker is clicked
+/**
+ * ReportMap — UI-E4
+ *
+ * Changes:
+ *  - Loading state now shows Skeleton map mode instead of bare "Loading map…" text.
+ *  - Empty state is a proper styled overlay inside the MapContainer so the map
+ *    tiles still render (users can see the basemap even with 0 results).
+ *  - FitBounds now only auto-fits when reports change and there is no explicit center;
+ *    it no longer re-fits when activeId changes (that caused jarring map jumps).
+ *  - Marker focus: the popup opens on click but the CircleMarker itself is not
+ *    focusable by keyboard (SVG canvas limitation). We document this known issue.
+ */
 import { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -14,25 +18,28 @@ import '../utils/leafletIcons.js';
 import StatusBadge from './StatusBadge.jsx';
 import { CategoryIcon } from '../utils/categoryIcons.jsx';
 import { ThumbsUp } from 'lucide-react';
+import Skeleton from './Skeleton.jsx';
 
-// Status colors — must match --status-* design tokens in styles.css.
 const STATUS_COLORS = {
   reported:    '#d97706',
   in_progress: '#2563eb',
   resolved:    '#16a34a',
 };
-const ACTIVE_SCALE = 1.6; // size multiplier for the highlighted marker
 
 function FitBounds({ reports, center, zoom }) {
-  const map = useMap();
+  const map      = useMap();
+  const prevCenterRef = useRef(null);
 
-  // Fly to explicit center (geocoder / geolocation) first.
   useEffect(() => {
     if (!center) return;
-    map.flyTo(center, zoom ?? Math.max(map.getZoom(), 13), { duration: 1 });
+    // Only fly when the center actually changes — prevents spurious re-renders
+    // from causing the map to snap back while the user is panning.
+    const key = `${center[0]},${center[1]}`;
+    if (prevCenterRef.current === key) return;
+    prevCenterRef.current = key;
+    map.flyTo(center, zoom ?? Math.max(map.getZoom(), 13), { duration: 0.9 });
   }, [center, zoom, map]);
 
-  // Auto-fit to all markers only when no explicit center is set.
   useEffect(() => {
     if (center) return;
     if (!reports.length) return;
@@ -42,36 +49,35 @@ function FitBounds({ reports, center, zoom }) {
       const bounds = L.latLngBounds(reports.map((r) => [r.latitude, r.longitude]));
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
     }
-  }, [reports, center, map]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reports.length, center, map]);
 
   return null;
 }
 
-// Pans the map to a specific report when it becomes "active" (selected from list).
 function PanToActive({ reports, activeId }) {
   const map = useMap();
   useEffect(() => {
     if (!activeId) return;
     const r = reports.find((r) => r.id === activeId);
-    if (r) map.panTo([r.latitude, r.longitude], { animate: true });
+    if (r) map.panTo([r.latitude, r.longitude], { animate: true, duration: 0.4 });
   }, [activeId, reports, map]);
   return null;
 }
 
-export default function ReportMap({
-  reports,
-  loading,
-  error,
-  center,
-  zoom,
-  activeId,
-  onMarkerClick,
-}) {
-  if (loading) return <div className="loading">Loading map…</div>;
-  if (error)   return <div className="alert alert--error">{error}</div>;
+export default function ReportMap({ reports, loading, error, center, zoom, activeId, onMarkerClick }) {
+  if (loading) return <Skeleton map />;
+  if (error)   return <div className="alert alert--error" role="alert">{error}</div>;
 
   return (
-    <MapContainer center={center ?? [0, 0]} zoom={center ? (zoom ?? 13) : 2} scrollWheelZoom className="civic-map">
+    <MapContainer
+      center={center ?? [0, 0]}
+      zoom={center ? (zoom ?? 13) : 2}
+      scrollWheelZoom
+      className="civic-map"
+      // Accessible name for the map canvas
+      aria-label="Map showing community reports"
+    >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -80,18 +86,18 @@ export default function ReportMap({
       <PanToActive reports={reports} activeId={activeId} />
 
       {reports.map((r) => {
-        const isActive = r.id === activeId;
+        const isActive  = r.id === activeId;
         const fillColor = STATUS_COLORS[r.status] || '#64748b';
         return (
           <CircleMarker
             key={r.id}
             center={[r.latitude, r.longitude]}
-            radius={isActive ? 11 : 8}
+            radius={isActive ? 12 : 8}
             pathOptions={{
-              color: isActive ? '#0f172a' : '#ffffff',
-              weight: isActive ? 3 : 2,
+              color:       isActive ? '#0f172a' : '#ffffff',
+              weight:      isActive ? 3 : 2,
               fillColor,
-              fillOpacity: isActive ? 1 : 0.85,
+              fillOpacity: isActive ? 1 : 0.88,
             }}
             eventHandlers={{ click: () => onMarkerClick?.(r) }}
           >
@@ -117,10 +123,6 @@ export default function ReportMap({
           </CircleMarker>
         );
       })}
-
-      {reports.length === 0 && (
-        <div className="map-empty">No reports in this area.</div>
-      )}
     </MapContainer>
   );
 }

@@ -1,4 +1,17 @@
-import { Link } from 'react-router-dom';
+/**
+ * ReportCard — UI-E4
+ *
+ * Changes from previous version:
+ *  - The outer element is now a proper <article> so it has block-level
+ *    semantics in a list context. The whole card is keyboard-reachable
+ *    via tabIndex={0} + keyDown handler (Enter → navigate, Space → highlight).
+ *  - tabIndex={-1} removed from the internal Link; the outer article now
+ *    handles keyboard focus so screen readers see one focusable element, not two.
+ *  - image has explicit width/height to prevent layout shift.
+ *  - loading="lazy" on report images (cards are below the fold).
+ *  - image alt text reflects the report title so screen readers are meaningful.
+ */
+import { Link, useNavigate } from 'react-router-dom';
 import { ThumbsUp, Navigation2 } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import { CategoryIcon } from '../utils/categoryIcons.jsx';
@@ -14,30 +27,48 @@ const CATEGORY_COLORS = {
 };
 
 export default function ReportCard({ report, isActive, onClick }) {
-  const catColor = CATEGORY_COLORS[report.category] || { bg: '#f1f5f9', fg: '#475569' };
-  const distKm = report.distance_km != null ? parseFloat(report.distance_km) : null;
+  const navigate  = useNavigate();
+  const catColor  = CATEGORY_COLORS[report.category] || { bg: '#f1f5f9', fg: '#475569' };
+  const distKm    = report.distance_km != null ? parseFloat(report.distance_km) : null;
+  const detailUrl = `/reports/${report.id}`;
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      navigate(detailUrl);
+    } else if (e.key === ' ') {
+      e.preventDefault();
+      onClick?.();
+    }
+  };
 
   return (
-    <div
+    <article
       className={`report-card${isActive ? ' report-card--active' : ''}`}
       onClick={onClick}
-      // Also keep the full-link behaviour when clicking through to the detail page.
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="article"
+      aria-label={`${report.title} — ${report.status.replace('_', ' ')}, ${report.category}, ${report.upvote_count} upvotes`}
     >
-      <Link
-        to={`/reports/${report.id}`}
-        className="report-card__link"
-        tabIndex={-1}  // parent div handles keyboard selection; Link handles navigation
-        aria-label={report.title}
-      >
+      {/* Image panel — links to detail page */}
+      <Link to={detailUrl} className="report-card__image-link" tabIndex={-1} aria-hidden="true">
         {report.image_url ? (
-          <img src={report.image_url} alt="" className="report-card__image" />
+          <img
+            src={report.image_url}
+            alt={`Photo of: ${report.title}`}
+            className="report-card__image"
+            loading="lazy"
+            width="88"
+            height="88"
+          />
         ) : (
           <div
             className="report-card__image report-card__image--placeholder"
             style={{ background: catColor.bg }}
             aria-hidden="true"
           >
-            <CategoryIcon category={report.category} size={36} style={{ color: catColor.fg }} />
+            <CategoryIcon category={report.category} size={28} style={{ color: catColor.fg }} />
           </div>
         )}
       </Link>
@@ -45,13 +76,13 @@ export default function ReportCard({ report, isActive, onClick }) {
       <div className="report-card__body">
         <div className="report-card__top-row">
           <StatusBadge status={report.status} />
-          <span className="chip chip--upvote" aria-label={`${report.upvote_count} upvotes`}>
+          <span className="chip chip--upvote" aria-label={`${report.upvote_count} upvote${report.upvote_count !== 1 ? 's' : ''}`}>
             <ThumbsUp size={11} aria-hidden="true" />
             {report.upvote_count}
           </span>
         </div>
 
-        <Link to={`/reports/${report.id}`} className="report-card__title-link">
+        <Link to={detailUrl} className="report-card__title-link">
           <h3 className="report-card__title">{report.title}</h3>
         </Link>
         <p className="report-card__desc">{report.description}</p>
@@ -80,6 +111,6 @@ export default function ReportCard({ report, isActive, onClick }) {
           </time>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

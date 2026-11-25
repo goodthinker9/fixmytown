@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Favicon: use the real SVG logo instead of the emoji data-URL -->
+    <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/logo-mark.svg" />
 
     <!-- Page identity -->
@@ -12,7 +12,15 @@
     <meta name="description" content="Residents report broken water points, power outages, potholes and garbage. Everyone tracks progress on a live map." />
     <meta name="theme-color" content="#2563eb" />
 
-    <!-- Open Graph (Facebook, LinkedIn, WhatsApp) -->
+    <!--
+      Preconnect to tile servers so the first map tile request is faster.
+      Leaflet loads tiles from *.tile.openstreetmap.org; preconnecting the
+      apex domain is the most we can do since the subdomain (a/b/c) is
+      chosen at runtime.
+    -->
+    <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin />
+
+    <!-- Open Graph -->
     <meta property="og:type"        content="website" />
     <meta property="og:title"       content="FixMyTown - Report and track community problems" />
     <meta property="og:description" content="Residents report broken water points, power outages, potholes and garbage. Everyone tracks progress on a live map." />
@@ -25,6 +33,13 @@
     <meta name="twitter:image"       content="/logo-mark.svg" />
   </head>
   <body>
+    <!--
+      Skip-to-content link: visually hidden until focused by keyboard.
+      This is WCAG 2.1 success criterion 2.4.1 (bypass blocks).
+      The link targets the #main-content anchor placed on <main> in App.jsx.
+    -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

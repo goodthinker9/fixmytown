@@ -51,7 +51,7 @@ export default function App() {
     <div className="app-shell">
       <Navbar />
 
-      <main className="app-main">
+      <main className="app-main" id="main-content" tabIndex={-1}>
         {/*
           AnimatePresence mode="wait" means the outgoing page fully exits before
           the incoming page enters, preventing visual overlap.

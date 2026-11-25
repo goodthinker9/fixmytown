@@ -2859,3 +2859,228 @@ textarea.input { min-height: 96px; resize: vertical; }
 
   .cta-band__actions .btn { width: 100%; }
 }
+
+/* =====================================================================
+   UI-E4 — Map section polish, footer rebuild, skeletons, a11y & perf
+   ===================================================================== */
+
+/* ── SKIP-TO-CONTENT LINK ───────────────────────────────────────────── */
+/* Visually hidden until keyboard-focused; then drops in from the top.   */
+.skip-link {
+  position: fixed;
+  top: -100%;
+  left: var(--space-4);
+  z-index: 9999;
+  background: var(--primary);
+  color: #fff;
+  padding: 0.65rem 1.1rem;
+  border-radius: 0 0 var(--radius) var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-decoration: none;
+  transition: top 0.15s;
+  box-shadow: var(--shadow-md);
+}
+.skip-link:focus {
+  top: 0;
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+/* ── REPORT CARD — improved hover / focus / keyboard states ─────────── */
+.report-card {
+  /* cursor:pointer already set; add outline for keyboard focus */
+  outline: none;
+}
+.report-card:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 5px var(--primary-100);
+}
+/* Rename image-link class used in E4 version */
+.report-card__image-link {
+  display: block;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+/* ── SKELETON — map mode ────────────────────────────────────────────── */
+.skeleton-map {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border-radius: var(--radius-lg);
+  background: var(--neutral-100);
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-map__pulse {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    var(--neutral-200) 25%,
+    var(--neutral-100) 50%,
+    var(--neutral-200) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+/* ── FOOTER REBUILD ─────────────────────────────────────────────────── */
+/* Replace the original .footer rules; they remain in the base CSS but   */
+/* these override with the new 4-column layout.                           */
+.footer {
+  background: var(--neutral-900);
+  color: var(--neutral-400);
+  /* clear the old layout */
+}
+.footer__inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-5) var(--space-6);
+  display: grid;
+  grid-template-columns: 2.5fr 1fr 1fr 1fr;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+/* Brand column */
+.footer__brand-col { display: flex; flex-direction: column; gap: var(--space-3); }
+/* Override logo colour for dark background */
+.footer__brand-col .logo__word          { color: #fff; }
+.footer__brand-col .logo__word--accent  { color: var(--primary-500); }
+
+.footer__desc {
+  font-size: var(--text-sm);
+  line-height: 1.65;
+  color: var(--neutral-400);
+  max-width: 320px;
+}
+.footer__built {
+  font-size: var(--text-xs);
+  color: var(--neutral-600);
+  line-height: 1.5;
+}
+.footer__built a, .footer__credits a {
+  color: var(--neutral-400);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.footer__built a:hover, .footer__credits a:hover { color: #fff; }
+
+.footer__credits {
+  font-size: var(--text-xs);
+  color: var(--neutral-600);
+  line-height: 1.5;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding-top: var(--space-3);
+  margin-top: var(--space-1);
+}
+
+/* Nav columns */
+.footer__nav-col { display: flex; flex-direction: column; gap: var(--space-2); }
+.footer__col-heading {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  margin-bottom: var(--space-1);
+}
+.footer__links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.footer__link {
+  font-size: var(--text-sm);
+  color: var(--neutral-400);
+  text-decoration: none;
+  transition: color 0.1s;
+  line-height: 1.4;
+}
+.footer__link:hover { color: #fff; text-decoration: none; }
+.footer__link:focus-visible { outline: 2px solid var(--primary-500); outline-offset: 2px; border-radius: 2px; }
+
+/* Bottom bar */
+.footer__bottom {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--neutral-600);
+  flex-wrap: wrap;
+}
+.footer__bottom-sep { color: var(--neutral-700); }
+
+/* ── CIVIC SPLIT — sticky map polish ───────────────────────────────── */
+/* Ensure the sticky map panel always fills the full remaining height     */
+/* and doesn't leave a gap if the list is shorter.                        */
+.civic-split__map {
+  /* position: sticky is set in the UI-B-Revised block; we refine here */
+  display: flex;
+  flex-direction: column;
+}
+.civic-map {
+  flex: 1;
+  min-height: 420px;
+}
+
+/* Map / List toggle — mobile: smooth slide indicator */
+.civic-browse__mobile-toggle {
+  display: none;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: var(--space-4);
+  width: fit-content;
+}
+.civic-browse__mobile-toggle .view-toggle__btn {
+  flex: 1;
+  min-width: 80px;
+  font-size: var(--text-sm);
+  transition: background 0.18s, color 0.18s;
+}
+
+/* ── GENERAL FOCUS IMPROVEMENTS ─────────────────────────────────────── */
+/* Any interactive element that only shows an icon needs a visible ring. */
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── PERFORMANCE: image aspect-ratio reservation ───────────────────── */
+/* Explicit aspect-ratio prevents layout shift when lazy-loaded images
+   haven't loaded yet. width/height attrs on the img provide the same
+   effect but this CSS version is a belt-and-suspenders fallback.        */
+.report-card__image {
+  aspect-ratio: 1 / 1;
+}
+.community-split__image {
+  aspect-ratio: 3 / 2;
+}
+.hero2__photo {
+  aspect-ratio: 16 / 9;
+}
+
+/* ── FOOTER RESPONSIVE ──────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .footer__inner { grid-template-columns: 1fr 1fr 1fr; }
+  /* Brand col spans full width */
+  .footer__brand-col { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: var(--space-5); }
+  .footer__desc { max-width: none; flex: 1 1 300px; }
+  .footer__built, .footer__credits { flex: 1 1 300px; }
+}
+@media (max-width: 700px) {
+  .footer__inner { grid-template-columns: 1fr 1fr; padding: var(--space-6) var(--space-4); gap: var(--space-5); }
+  .footer__brand-col { grid-column: 1 / -1; flex-direction: column; }
+}
+@media (max-width: 480px) {
+  .footer__inner { grid-template-columns: 1fr; }
+  .footer__bottom { gap: var(--space-2); }
+}

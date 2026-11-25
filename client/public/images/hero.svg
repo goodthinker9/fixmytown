@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <!-- Placeholder hero — replace with a real photo (hero.jpg) in production.
+       The gradient simulates an overcast town-scape sky so the dark overlay
+       and white text look correct against it. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#1a2744"/>
+      <stop offset="60%"  stop-color="#2d4a7a"/>
+      <stop offset="100%" stop-color="#3d6494"/>
+    </linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#1f3352"/>
+      <stop offset="100%" stop-color="#0f1a2b"/>
+    </linearGradient>
+  </defs>
+  <!-- Sky -->
+  <rect width="1920" height="720" fill="url(#sky)"/>
+  <!-- Ground/road area -->
+  <rect y="720" width="1920" height="360" fill="url(#ground)"/>
+  <!-- Simple town silhouette shapes -->
+  <rect x="80"  y="560" width="120" height="160" fill="#16294d" rx="4"/>
+  <rect x="90"  y="520" width="100" height="40"  fill="#1a2f5a" rx="2"/>
+  <rect x="240" y="500" width="200" height="220" fill="#152340" rx="4"/>
+  <rect x="260" y="460" width="160" height="40"  fill="#1a2b4a" rx="2"/>
+  <rect x="480" y="540" width="160" height="180" fill="#16294d" rx="4"/>
+  <rect x="680" y="440" width="280" height="280" fill="#101e35" rx="4"/>
+  <rect x="700" y="400" width="240" height="40"  fill="#152340" rx="2"/>
+  <rect x="1000" y="510" width="180" height="210" fill="#16294d" rx="4"/>
+  <rect x="1220" y="470" width="140" height="250" fill="#122038" rx="4"/>
+  <rect x="1400" y="530" width="200" height="190" fill="#16294d" rx="4"/>
+  <rect x="1640" y="490" width="160" height="230" fill="#122038" rx="4"/>
+  <rect x="1800" y="550" width="120" height="170" fill="#16294d" rx="4"/>
+  <!-- Road -->
+  <rect x="0" y="830" width="1920" height="80" fill="#0e1c30" rx="0"/>
+  <rect x="0" y="880" width="1920" height="10" fill="#1a3050" rx="0"/>
+  <!-- Street lights (subtle) -->
+  <circle cx="400"  cy="790" r="6" fill="#ffd97040" opacity="0.5"/>
+  <circle cx="800"  cy="790" r="6" fill="#ffd97040" opacity="0.5"/>
+  <circle cx="1200" cy="790" r="6" fill="#ffd97040" opacity="0.5"/>
+  <circle cx="1600" cy="790" r="6" fill="#ffd97040" opacity="0.5"/>
+  <!-- Subtle note for developers -->
+  <text x="960" y="1050" text-anchor="middle" font-family="system-ui" font-size="18" fill="#ffffff30">
+    Replace with /images/hero.jpg — 1920×1080 real photo
+  </text>
+</svg>

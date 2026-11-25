@@ -139,7 +139,7 @@ const HOW_STEPS = [
 
 function HowItWorks() {
   return (
-    <section className="how-section" aria-labelledby="how-heading">
+    <section className="how-section" aria-labelledby="how-heading" id="how">
       <h2 id="how-heading" className="how-section__title">How it works</h2>
       <div className="how-steps">
         {HOW_STEPS.map(({ icon: Icon, step, title, desc }) => (

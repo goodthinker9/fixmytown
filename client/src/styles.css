@@ -1902,3 +1902,275 @@ textarea.input { min-height: 96px; resize: vertical; }
   .wizard-progress__label { display: none; }
   .wizard-progress__line  { margin: 0 var(--space-1); }
 }
+
+/* =====================================================================
+   UI-E1 — Animation foundation & navbar rebuild
+   ===================================================================== */
+
+/* ── NAVBAR REBUILD ─────────────────────────────────────────────────── */
+/* Override the original .navbar block from section 5 and the UI-B
+   "NAVBAR IMPROVEMENTS" block.  All prior navbar rules remain for
+   mobile-menu__* classes still used in other places; the core navbar
+   layout is fully replaced here. */
+
+/* navbar shell */
+.navbar {
+  position: fixed;          /* fixed so it overlaps the hero */
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  height: 64px;
+  /* The transition animates the visual properties when scrolling. */
+  transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  will-change: background, box-shadow;
+}
+
+/* Transparent state — used over the hero on the Home page */
+.navbar--transparent {
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  box-shadow: none;
+}
+
+/* Solid state — used on all other pages + after scroll */
+.navbar--solid {
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.navbar__inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Brand */
+.navbar__brand { display: flex; align-items: center; color: var(--text); flex-shrink: 0; }
+.navbar__brand:hover { text-decoration: none; }
+
+/* On transparent bar: logo text turns white for legibility over the gradient */
+.navbar--transparent .navbar__brand .logo__word { color: #fff; }
+.navbar--transparent .navbar__brand .logo__word--accent { color: rgba(255,255,255,0.75); }
+
+/* Desktop nav — centred between brand and actions */
+.navbar__nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: var(--space-4);
+  position: relative;   /* positioning context for the sliding indicator */
+}
+
+/* Sliding active indicator */
+.navbar__indicator {
+  position: absolute;
+  bottom: -4px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--primary);
+  pointer-events: none;
+}
+
+/* Nav link — same as before but with transparent-state overrides */
+.navbar__nav .nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s, background 0.12s;
+  min-height: auto;
+  text-decoration: none;
+}
+.navbar__nav .nav-link:hover { background: var(--primary-50); color: var(--primary); text-decoration: none; }
+.navbar__nav .nav-link.active { color: var(--primary); font-weight: 600; }
+
+/* Transparent bar: nav links turn white */
+.navbar--transparent .navbar__nav .nav-link { color: rgba(255,255,255,0.9); }
+.navbar--transparent .navbar__nav .nav-link:hover { background: rgba(255,255,255,0.15); color: #fff; }
+.navbar--transparent .navbar__nav .nav-link.active { color: #fff; }
+.navbar--transparent .navbar__indicator { background: #fff; }
+
+/* Desktop right-side actions */
+.navbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* Primary "Report an issue" button */
+.navbar__report-btn { flex-shrink: 0; }
+
+/* Ghost variant of user-dropdown trigger for transparent navbar */
+.user-dropdown__trigger--ghost {
+  border-color: rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+}
+.user-dropdown__trigger--ghost:hover { background: rgba(255,255,255,0.28); }
+.user-dropdown__trigger--ghost .user-dropdown__avatar {
+  background: rgba(255,255,255,0.25);
+  color: #fff;
+}
+
+/* Hamburger */
+.navbar__hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  padding: var(--space-2);
+  border-radius: var(--radius);
+  min-height: 44px;
+  min-width: 44px;
+  margin-left: auto;
+}
+.navbar__hamburger:hover { background: var(--neutral-100); }
+.navbar--transparent .navbar__hamburger { color: #fff; }
+.navbar--transparent .navbar__hamburger:hover { background: rgba(255,255,255,0.15); }
+
+/* ── MOBILE DRAWER ──────────────────────────────────────────────────── */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 300;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(320px, 90vw);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.drawer__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  padding: var(--space-2);
+  border-radius: var(--radius);
+  min-height: 40px;
+  min-width: 40px;
+}
+.drawer__close:hover { background: var(--neutral-100); color: var(--text); }
+
+.drawer__nav {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) var(--space-4);
+  gap: 2px;
+}
+
+.drawer__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0.75rem var(--space-3);
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--text);
+  border-radius: var(--radius);
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+  transition: background 0.1s;
+}
+.drawer__item:hover { background: var(--neutral-100); text-decoration: none; }
+.drawer__item--danger { color: var(--red-600); }
+.drawer__item--danger:hover { background: var(--red-50); }
+
+.drawer__divider {
+  height: 1px;
+  background: var(--border);
+  margin: var(--space-2) var(--space-4);
+}
+
+.drawer__user-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+.drawer__user-info {
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-1);
+}
+.drawer__user-name  { font-weight: 700; font-size: var(--text-sm); }
+.drawer__user-email { font-size: var(--text-xs); color: var(--muted); margin-top: 2px; }
+
+.drawer__auth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+/* ── BODY OFFSET — fixed navbar pushes content down ────────────────── */
+/* The navbar is now fixed (not sticky), so the layout body needs top padding. */
+.app-main {
+  padding-top: 64px;    /* matches .navbar height */
+}
+/* Home page hero should bleed behind the transparent navbar */
+.hero {
+  margin-top: -64px;    /* pulls hero up under the fixed navbar */
+  padding-top: calc(64px + 4rem);  /* compensates so headline isn't obscured */
+}
+
+/* ── RESPONSIVE ─────────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  /* Hide desktop nav + actions on mobile */
+  .navbar__nav     { display: none; }
+  .navbar__actions { display: none; }
+  /* Show hamburger */
+  .navbar__hamburger { display: inline-flex; }
+}
+
+@media (max-width: 600px) {
+  .navbar__inner { padding: 0 var(--space-4); }
+}

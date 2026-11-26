@@ -3084,3 +3084,135 @@ a:focus-visible {
   .footer__inner { grid-template-columns: 1fr; }
   .footer__bottom { gap: var(--space-2); }
 }
+
+/* =====================================================================
+   UI-F — Layout bug fixes and final polish
+   ===================================================================== */
+
+/* ── 1. SEARCH CARD: geocoder height fix ────────────────────────────── */
+/* Without this the .geocoder inside the search card stretches to fill
+   the flex container, making the card ~320 px tall instead of compact. */
+.hero2__search-card .geocoder {
+  flex: 0 0 auto;   /* don't grow or shrink — just be as tall as the input */
+  width: 100%;
+}
+
+/* ── 2. CATEGORY GRID: 3-col, 2 equal rows, no span tricks ─────────── */
+/* Reset the UI-E3 grid that had 4 columns and a grid-row: span 2 on
+   the first tile (which left an empty cell when only 2 of 6 had photos). */
+.cat-grid {
+  grid-template-columns: repeat(3, 1fr) !important;
+  grid-template-rows:    repeat(2, 240px) !important;
+  grid-auto-rows:        240px;
+}
+/* Remove the span-2 hero tile */
+.cat-grid > div:nth-child(1) {
+  grid-row:    auto !important;
+  grid-column: auto !important;
+}
+.cat-tile {
+  /* Ensure every tile fills its cell */
+  height: 100%;
+  min-height: 180px;
+}
+
+/* Tablet: 2 columns */
+@media (max-width: 860px) {
+  .cat-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-rows:    auto !important;
+  }
+  .cat-tile { min-height: 200px; }
+}
+
+/* Mobile: 1 column */
+@media (max-width: 540px) {
+  .cat-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .cat-tile { min-height: 160px; }
+}
+
+/* ── 3. FOOTER: inline links in .footer__built ──────────────────────── */
+/* Ensure anchor tags inside the built-with and credits paragraphs stay
+   inline so the sentence doesn't break into a vertical list. */
+.footer__built a,
+.footer__credits a {
+  display: inline !important;   /* override any residual block/flex from base styles */
+}
+
+/* ── 4. HERO OVERLAY: always present even before the photo loads ──── */
+/* The gradient is already defined in UI-E2; this rule just lifts its
+   z-index above the photo and locks the colour to guarantee contrast. */
+.hero2__overlay {
+  z-index: 2;
+  /* Re-state the gradient here so a future CSS refactor can't lose it */
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(5, 15, 36, 0.72) 0%,
+      rgba(5, 15, 36, 0.60) 50%,
+      rgba(5, 15, 36, 0.30) 85%,
+      rgba(5, 15, 36, 0.00) 100%
+    );
+}
+/* Hero content must be above the overlay */
+.hero2__inner {
+  z-index: 3;
+}
+
+/* ── 5. GENERAL: image fallback background ──────────────────────────── */
+/* When a .jpg hasn't been placed yet the img fails silently and the
+   element collapses. Add a minimum height and a neutral background so
+   the layout doesn't jump while images are absent. */
+.cat-tile__photo {
+  background: var(--neutral-200);  /* shows while loading or when src is broken */
+}
+.community-split__image {
+  background: var(--neutral-200);
+  min-height: 300px;
+}
+.hero2__photo {
+  background: #0f1a2b; /* dark to match the overlay tone */
+  min-height: 400px;
+}
+
+/* ── 6. RESPONSIVE: remaining 375px fixes ───────────────────────────── */
+@media (max-width: 600px) {
+  /* Impact grid: 1 column on small phones (was 2 and was clipping) */
+  .impact-grid {
+    grid-template-columns: 1fr !important;
+  }
+  /* How-it-works: ensure text doesn't overflow the step number */
+  .how-v2__step-num { font-size: 1.5rem; }
+
+  /* Community section: stack cleanly */
+  .community-split { gap: var(--space-4); }
+  .community-actions { flex-direction: column; }
+  .community-actions .btn { width: 100%; text-align: center; }
+
+  /* CTA band */
+  .cta-band__actions { flex-direction: column; gap: var(--space-2); }
+  .cta-band__actions .btn { width: 100%; }
+
+  /* Footer bottom bar: stack */
+  .footer__bottom { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+  .footer__bottom-sep { display: none; }
+}
+
+/* ── 7. RESPONSIVE: remaining 768px fixes ───────────────────────────── */
+@media (min-width: 601px) and (max-width: 860px) {
+  /* Impact grid 2-col on tablet (was collapsing to 1 on some widths) */
+  .impact-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  /* Hero inner: reduce top padding so search card is fully visible */
+  .hero2__inner { padding-top: 3.5rem; }
+  /* Community split: ensure image doesn't get too tall */
+  .community-split__image { max-height: 400px; object-fit: cover; }
+}
+
+/* ── 8. ROUTE FALLBACK SPINNER ──────────────────────────────────────── */
+/* The spin keyframe is already defined in styles.css (UI-C, section).
+   This just ensures the lazy-route fallback spinner works. */
+/* (No new rule needed — @keyframes spin already exists.) */

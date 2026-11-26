@@ -164,32 +164,33 @@ const CATEGORY_TILES = [
     value: 'water',
     label: 'Water',
     icon: Droplets,
-    img: '/images/water.svg',
-    alt: 'Water infrastructure — pipes, taps and water points in a town',
+    // Use .jpg when available; keep .svg as the placeholder fallback.
+    img: '/images/water.jpg',
+    alt: 'A communal water tap on a town street',
     color: '#2563eb',
   },
   {
     value: 'roads',
     label: 'Roads',
     icon: Construction,
-    img: '/images/roads.svg',
-    alt: 'Road surface with a pothole on a town street',
+    img: '/images/roads.jpg',
+    alt: 'A road with surface damage and potholes',
     color: '#64748b',
   },
   {
     value: 'garbage',
     label: 'Garbage',
     icon: Trash2,
-    img: '/images/garbage.svg',
-    alt: 'Overfull rubbish bins on a street corner',
+    img: '/images/garbage.jpg',
+    alt: 'Overflowing rubbish bins on a street corner',
     color: '#16a34a',
   },
   {
     value: 'electricity',
     label: 'Electricity',
     icon: Zap,
-    img: '/images/electricity.svg',
-    alt: 'Power lines and electrical poles in a neighbourhood',
+    img: '/images/electricity.jpg',
+    alt: 'Power poles and electricity lines in a residential neighbourhood',
     color: '#d97706',
   },
   {
@@ -368,9 +369,9 @@ function CommunitySection() {
         <div className="community-split">
           {/* Photo */}
           <Reveal className="community-split__image-wrap">
-            <img
-              src="/images/community.svg"
-              alt="Silhouette of a residential neighbourhood at dusk, with lit windows suggesting community life"
+              <img
+              src="/images/community.jpg"
+              alt="Residential street in the evening with lit houses and community members visible"
               className="community-split__image"
               loading="lazy"
               width="960"
@@ -586,7 +587,7 @@ export default function Home() {
       <section className="hero2" aria-label="Welcome to FixMyTown">
         <div className="hero2__bg" aria-hidden="true">
           <img
-            src="/images/hero.svg"
+            src="/images/hero.jpg"
             alt=""
             className="hero2__photo"
             fetchpriority="high"

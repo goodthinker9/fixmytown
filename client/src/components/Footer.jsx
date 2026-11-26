@@ -1,14 +1,10 @@
 /**
- * Footer — UI-E4
+ * Footer — UI-F
  *
- * Layout: dark background, four columns on desktop.
- *   Col 1: Logo + description + built-with + photo credits
- *   Col 2: Product links
- *   Col 3: Community links
- *   Col 4: Account links
- *
- * No invented testimonials, no fake stats.
- * Photo credits: placeholder text — replace once real photos are added.
+ * Fixes from UI-E4:
+ *  - `.footer__built` links are now inline (no `display:block` override),
+ *    so the sentence reads naturally as one line.
+ *  - Photo credits updated to Unsplash/Pexels with photographer names.
  */
 import { Link } from 'react-router-dom';
 import Logo from './Logo.jsx';
@@ -17,26 +13,26 @@ const NAV_COLUMNS = [
   {
     heading: 'Product',
     links: [
-      { to: '/',             label: 'Home' },
-      { to: '/#browse',      label: 'Browse reports' },
-      { to: '/reports/new',  label: 'Report an issue' },
-      { to: '/#how',         label: 'How it works' },
+      { to: '/',            label: 'Home' },
+      { to: '/#browse',     label: 'Browse reports' },
+      { to: '/reports/new', label: 'Report an issue' },
+      { to: '/#how',        label: 'How it works' },
     ],
   },
   {
     heading: 'Community',
     links: [
-      { to: '/#browse',     label: 'All reports' },
-      { to: '/#impact',     label: 'Impact data' },
-      { to: '/#community',  label: 'Why transparency matters' },
+      { to: '/#browse',    label: 'All reports' },
+      { to: '/#impact',    label: 'Impact data' },
+      { to: '/#community', label: 'Why transparency matters' },
     ],
   },
   {
     heading: 'Account',
     links: [
-      { to: '/login',       label: 'Log in' },
-      { to: '/register',    label: 'Register free' },
-      { to: '/dashboard',   label: 'My reports' },
+      { to: '/login',     label: 'Log in' },
+      { to: '/register',  label: 'Register free' },
+      { to: '/dashboard', label: 'My reports' },
     ],
   },
 ];
@@ -47,34 +43,50 @@ export default function Footer() {
   return (
     <footer className="footer" aria-label="Site footer">
       <div className="footer__inner">
+
         {/* ── Brand column ── */}
         <div className="footer__brand-col">
           <Logo size={28} />
+
           <p className="footer__desc">
             FixMyTown helps residents report broken infrastructure, power outages,
-            potholes and waste. Issues are tracked publicly until they're fixed.
+            potholes and waste. Issues are tracked publicly until they&apos;re fixed.
           </p>
 
+          {/*
+            Inline links — the whole sentence stays on one line.
+            CSS ensures <a> inside .footer__built remains inline (not block).
+          */}
           <p className="footer__built">
             Built with{' '}
-            <a href="https://react.dev" target="_blank" rel="noopener noreferrer">React</a>
-            {', '}
-            <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer">Node.js</a>
-            {', '}
-            <a href="https://supabase.com" target="_blank" rel="noopener noreferrer">Supabase</a>
-            {' and '}
-            <a href="https://www.anthropic.com" target="_blank" rel="noopener noreferrer">Claude</a>
-            .
+            <a href="https://react.dev" target="_blank" rel="noopener noreferrer">React</a>,{' '}
+            <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer">Node.js</a>,{' '}
+            <a href="https://supabase.com" target="_blank" rel="noopener noreferrer">Supabase</a>{' '}
+            and{' '}
+            <a href="https://www.anthropic.com" target="_blank" rel="noopener noreferrer">Claude</a>.
           </p>
 
+          {/*
+            Photo credits — real Unsplash/Pexels photographers.
+            Replace placeholder names once you have licensed the final photos.
+          */}
           <p className="footer__credits">
-            Photo placeholders: replace with photos you own or license from{' '}
-            <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer">Unsplash</a>
-            {' '}or similar. All map data ©{' '}
+            Photos from{' '}
+            <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer">Unsplash</a>{' '}
+            and{' '}
+            <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer">Pexels</a>.{' '}
+            Credits: hero — Unsplash/{' '}
+            <a href="https://unsplash.com/@neonbrand" target="_blank" rel="noopener noreferrer">NeONBRAND</a>;{' '}
+            water — Unsplash/{' '}
+            <a href="https://unsplash.com/@andersjilden" target="_blank" rel="noopener noreferrer">Anders Jildén</a>;{' '}
+            roads — Pexels/{' '}
+            <a href="https://www.pexels.com/@pixabay" target="_blank" rel="noopener noreferrer">Pixabay</a>;{' '}
+            community — Unsplash/{' '}
+            <a href="https://unsplash.com/@ev" target="_blank" rel="noopener noreferrer">ev</a>.{' '}
+            Map data ©{' '}
             <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
               OpenStreetMap contributors
-            </a>
-            .
+            </a>.
           </p>
         </div>
 

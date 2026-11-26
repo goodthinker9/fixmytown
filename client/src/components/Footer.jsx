@@ -1,10 +1,10 @@
 /**
- * Footer — UI-F
+ * Footer — UI-G
  *
- * Fixes from UI-E4:
- *  - `.footer__built` links are now inline (no `display:block` override),
- *    so the sentence reads naturally as one line.
- *  - Photo credits updated to Unsplash/Pexels with photographer names.
+ * Fixes:
+ *  - .footer__built renders inline (the old flex:column CSS is patched in styles.css)
+ *  - Photo credits: exact placeholder text "Photos: <I will paste real credits here>"
+ *    No invented names or links — the user will paste the real credits.
  */
 import { Link } from 'react-router-dom';
 import Logo from './Logo.jsx';
@@ -53,10 +53,7 @@ export default function Footer() {
             potholes and waste. Issues are tracked publicly until they&apos;re fixed.
           </p>
 
-          {/*
-            Inline links — the whole sentence stays on one line.
-            CSS ensures <a> inside .footer__built remains inline (not block).
-          */}
+          {/* One inline sentence: "Built with React, Node.js, Supabase and Claude." */}
           <p className="footer__built">
             Built with{' '}
             <a href="https://react.dev" target="_blank" rel="noopener noreferrer">React</a>,{' '}
@@ -67,22 +64,11 @@ export default function Footer() {
           </p>
 
           {/*
-            Photo credits — real Unsplash/Pexels photographers.
-            Replace placeholder names once you have licensed the final photos.
+            Photo credits — paste your real credits in place of the placeholder.
+            Exact text as specified: "Photos: <I will paste real credits here>"
           */}
           <p className="footer__credits">
-            Photos from{' '}
-            <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer">Unsplash</a>{' '}
-            and{' '}
-            <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer">Pexels</a>.{' '}
-            Credits: hero — Unsplash/{' '}
-            <a href="https://unsplash.com/@neonbrand" target="_blank" rel="noopener noreferrer">NeONBRAND</a>;{' '}
-            water — Unsplash/{' '}
-            <a href="https://unsplash.com/@andersjilden" target="_blank" rel="noopener noreferrer">Anders Jildén</a>;{' '}
-            roads — Pexels/{' '}
-            <a href="https://www.pexels.com/@pixabay" target="_blank" rel="noopener noreferrer">Pixabay</a>;{' '}
-            community — Unsplash/{' '}
-            <a href="https://unsplash.com/@ev" target="_blank" rel="noopener noreferrer">ev</a>.{' '}
+            Photos: &lt;I will paste real credits here&gt;.{' '}
             Map data ©{' '}
             <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
               OpenStreetMap contributors

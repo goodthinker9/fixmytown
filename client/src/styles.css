@@ -973,7 +973,7 @@ textarea.input { min-height: 96px; resize: vertical; }
 .footer__nav a { color: var(--neutral-400); font-size: var(--text-sm); }
 .footer__nav a:hover { color: #fff; text-decoration: none; }
 .footer__nav-label { font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--neutral-600); margin-bottom: var(--space-1); }
-.footer__built { display: flex; flex-direction: column; gap: var(--space-2); }
+.footer__built { font-size: var(--text-sm); line-height: 1.6; }
 .footer__stack { font-size: var(--text-sm); }
 .footer__bottom {
   border-top: 1px solid rgba(255,255,255,0.08);
@@ -3216,3 +3216,86 @@ a:focus-visible {
 /* The spin keyframe is already defined in styles.css (UI-C, section).
    This just ensures the lazy-route fallback spinner works. */
 /* (No new rule needed — @keyframes spin already exists.) */
+
+/* =====================================================================
+   UI-G — Footer fix, icon-only tiles, image error fallbacks
+   ===================================================================== */
+
+/* ── 1. FOOTER: belt-and-suspenders inline fix ──────────────────────── */
+/* The old .footer__built { display:flex; flex-direction:column } was
+   replaced in styles.css; these rules guarantee inline regardless of
+   any other rule that might set display on <p> children.              */
+.footer__built,
+.footer__credits {
+  display: block !important;   /* <p> is block; children are inline */
+}
+.footer__built a,
+.footer__credits a {
+  display: inline !important;
+  white-space: normal;
+}
+
+/* ── 2. ICON-ONLY TILES: dark slate-to-blue gradient + hover ────────── */
+/* Replaces the flat red/purple fills with the same dark overlay language
+   as the photo tiles, keeping visual consistency across the grid.      */
+.cat-tile--icon-only {
+  background: linear-gradient(
+    145deg,
+    #1e293b 0%,
+    #1e3a5f 55%,
+    #1a3356 100%
+  ) !important;
+}
+/* Hover: lighten slightly, same scale as photo tiles */
+.cat-tile--icon-only:hover {
+  background: linear-gradient(
+    145deg,
+    #263548 0%,
+    #244870 55%,
+    #224068 100%
+  ) !important;
+}
+/* The .cat-tile__bg overlay inside icon-only tiles is now obsolete;
+   set it transparent so the gradient shows through cleanly.           */
+.cat-tile--icon-only .cat-tile__bg {
+  display: none;
+}
+/* Icon badge on icon-only tiles: use the category accent colour on a
+   semi-transparent dark background so it pops against the gradient.  */
+.cat-tile--icon-only .cat-tile__icon {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+/* Accent ring colour: use the CSS custom property set by the tile */
+.cat-tile--icon-only .cat-tile__label {
+  color: #fff;
+}
+
+/* ── 3. IMAGE FALLBACK: neutral dark gradient, never broken icon ──── */
+/* Applied when an <img> fires its onError handler (see Home.jsx).
+   The class swaps the src to nothing and reveals the CSS background.  */
+.cat-tile__photo--error {
+  /* Replace broken image with a neutral dark gradient */
+  opacity: 0;
+}
+/* The tile itself gets a fallback background when the photo errors */
+.cat-tile--img-error {
+  background: linear-gradient(145deg, #1e293b 0%, #1e3a5f 100%);
+}
+.cat-tile--img-error .cat-tile__overlay {
+  /* Still show overlay so text is readable */
+  background: linear-gradient(to top, rgba(5,15,36,0.5) 0%, rgba(5,15,36,0.1) 100%);
+}
+
+/* Community / hero image error fallbacks */
+.community-split__image--error {
+  opacity: 0;
+}
+.community-split__image-wrap--error {
+  background: linear-gradient(145deg, #1e293b 0%, #1a3356 100%);
+  min-height: 360px;
+}
+.hero2__photo--error {
+  opacity: 0;
+}
+/* hero2__bg already has background: #0f1a2b from UI-F, so it shows through */

@@ -25,7 +25,7 @@ import {
 
 import ReportFilters from '../components/ReportFilters.jsx';
 import ReportCard    from '../components/ReportCard.jsx';
-import ReportMap     from '../components/ReportMap.jsx';
+import LazyReportMap from '../components/LazyReportMap.jsx';
 import Pagination    from '../components/Pagination.jsx';
 import Skeleton      from '../components/Skeleton.jsx';
 import Reveal        from '../components/Reveal.jsx';
@@ -223,14 +223,13 @@ function CategoryGrid({ stats, statsLoading, onCategoryClick }) {
         </Reveal>
 
         <div className="cat-grid" role="list">
-          {CATEGORY_TILES.map(({ value, label, icon: Icon, img, alt, color }, i) => {
+          {CATEGORY_TILES.map(({ value, label, icon: Icon, img, alt }, i) => {
             const count = stats?.by_category?.[value];
             return (
               <Reveal key={value} delay={i * 0.06}>
                 <button
                   type="button"
                   className={`cat-tile${!img ? ' cat-tile--icon-only' : ''}`}
-                  style={!img ? { '--cat-color': color } : undefined}
                   onClick={() => onCategoryClick(value)}
                   aria-label={`${label} — ${count ?? '…'} report${count !== 1 ? 's' : ''}. Click to filter.`}
                   role="listitem"
@@ -244,10 +243,16 @@ function CategoryGrid({ stats, statsLoading, onCategoryClick }) {
                         loading="lazy"
                         width="400"
                         height="270"
+                        onError={(e) => {
+                          // Hide the broken image; the tile CSS fallback gradient shows.
+                          e.currentTarget.classList.add('cat-tile__photo--error');
+                          e.currentTarget.closest('.cat-tile')?.classList.add('cat-tile--img-error');
+                        }}
                       />
                       <div className="cat-tile__overlay" />
                     </>
                   ) : (
+                    // Icon-only: .cat-tile--icon-only gets the dark gradient via CSS
                     <div className="cat-tile__bg" aria-hidden="true" />
                   )}
                   <div className="cat-tile__content">
@@ -376,6 +381,10 @@ function CommunitySection() {
               loading="lazy"
               width="960"
               height="640"
+              onError={(e) => {
+                e.currentTarget.classList.add('community-split__image--error');
+                e.currentTarget.closest('.community-split__image-wrap')?.classList.add('community-split__image-wrap--error');
+              }}
             />
           </Reveal>
 
@@ -594,6 +603,9 @@ export default function Home() {
             decoding="async"
             width="1920"
             height="1080"
+            onError={(e) => {
+              e.currentTarget.classList.add('hero2__photo--error');
+            }}
           />
           <div className="hero2__overlay" />
         </div>
@@ -741,7 +753,7 @@ export default function Home() {
               className={`civic-split__map${mobileView === 'list' ? ' civic-split__map--hidden' : ''}`}
               aria-label="Reports map"
             >
-              <ReportMap
+              <LazyReportMap
                 reports={reports} loading={listLoading} error={listError}
                 center={mapCenter} zoom={mapZoom}
                 activeId={activeId} onMarkerClick={handleMarkerClick}

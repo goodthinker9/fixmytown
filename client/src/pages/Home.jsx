@@ -20,7 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import {
-  Search, LocateFixed, Loader2, List, Map as MapIcon, X, Camera,
+  Search, LocateFixed, Loader2, List, X, Camera, Plus, PanelLeftClose,
   ThumbsUp, CheckCircle2, FileText, ShieldCheck, Users, Sparkles,
   Droplets, Zap, Construction, Trash2, ShieldAlert, CircleHelp,
   ArrowRight, MapPin, Landmark, Eye,
@@ -412,7 +412,7 @@ export default function Home() {
   const reduced   = useReducedMotion();
 
   // map/list mobile toggle
-  const [mobileView, setMobileView] = useState('map');
+  const [panelOpen, setPanelOpen] = useState(true);
 
   // filters — shared across browse section and category grid
   const [category,    setCategory]    = useState('');
@@ -506,7 +506,7 @@ export default function Home() {
 
   const handleMarkerClick = useCallback((report) => {
     setActiveId((prev) => (prev === report.id ? null : report.id));
-    setMobileView('list');
+    setPanelOpen(true);
   }, []);
 
   useEffect(() => {
@@ -593,61 +593,66 @@ export default function Home() {
       {/* ══════ 3. CATEGORIES ══════ */}
       <Categories stats={globalStats} onPick={handleCategoryClick} />
 
-      {/* ══════ 4. BROWSE / MAP ══════ */}
-      <div className="hx-browse">
-      <div className="hx-container hx-browse-head">
-        <Reveal>
-          <header className="hx-head hx-head--left">
-            <span className="hx-eyebrow">Live map</span>
-            <h2 className="hx-title">{userCoords ? 'Reports near you' : 'See what is happening in your town'}</h2>
-            <p className="hx-lead">Search, filter and open any report. Click a pin to see its photo and status.</p>
-          </header>
-        </Reveal>
-      </div>
-      <div className="container">
-        <section id="browse" className="civic-browse section-spacing" aria-label="Browse reports">
-          {/* Mobile toggle */}
-          <div className="civic-browse__mobile-toggle" aria-label="Switch view" role="group">
-            <button
-              type="button"
-              className={mobileView === 'list' ? 'view-toggle__btn active' : 'view-toggle__btn'}
-              onClick={() => setMobileView('list')}
-              aria-pressed={mobileView === 'list'}
-            >
-              <List size={14} aria-hidden="true" /> List
-            </button>
-            <button
-              type="button"
-              className={mobileView === 'map' ? 'view-toggle__btn active' : 'view-toggle__btn'}
-              onClick={() => setMobileView('map')}
-              aria-pressed={mobileView === 'map'}
-            >
-              <MapIcon size={14} aria-hidden="true" /> Map
-            </button>
-          </div>
+      {/* ══════ 4. LIVE MAP — full-size map with floating panels ══════ */}
+      <section id="browse" className="hx-browse" aria-label="Browse reports on the map">
+        <div className="hx-container hx-browse-head">
+          <Reveal>
+            <header className="hx-head hx-head--left">
+              <span className="hx-eyebrow">Live map</span>
+              <h2 className="hx-title">{userCoords ? 'Reports near you' : 'See what is happening in your town'}</h2>
+              <p className="hx-lead">Search, filter and open any report. Click a pin to see its photo and status.</p>
+            </header>
+          </Reveal>
+        </div>
 
-          <div className="civic-split">
-            <aside
-              className={`civic-split__list${mobileView === 'map' ? ' civic-split__list--hidden' : ''}`}
-              aria-label="Report list"
-            >
-              <div className="civic-list-header">
-                <h2 className="browse__title">
-                  {userCoords ? 'Reports near you' : 'Community reports'}
-                </h2>
-                {!listLoading && (
-                  <span className="browse__count">{total} report{total !== 1 ? 's' : ''}</span>
-                )}
+        <div className="hx-container">
+          <div className={`hx-map${panelOpen ? '' : ' is-collapsed'}`}>
+            <div className="hx-map__canvas">
+              <LazyReportMap
+                reports={reports} loading={listLoading} error={listError}
+                center={mapCenter} zoom={mapZoom}
+                activeId={activeId} onMarkerClick={handleMarkerClick}
+              />
+
+              <ul className="hx-legend" aria-label="Map legend">
+                <li><span className="hx-dot hx-dot--reported" /> Reported</li>
+                <li><span className="hx-dot hx-dot--progress" /> In progress</li>
+                <li><span className="hx-dot hx-dot--resolved" /> Fixed</li>
+              </ul>
+
+              <Link to="/reports/new" className="hx-map__report">
+                <Plus size={18} aria-hidden="true" /> Report a problem
+              </Link>
+            </div>
+
+            {!panelOpen && (
+              <button type="button" className="hx-panel-open" onClick={() => setPanelOpen(true)}>
+                <List size={16} aria-hidden="true" /> Show list ({total})
+              </button>
+            )}
+
+            <aside className="hx-panel" aria-label="Report list" aria-hidden={!panelOpen}>
+              <div className="hx-panel__head">
+                <div>
+                  <h3 className="hx-panel__title">{userCoords ? 'Reports near you' : 'Community reports'}</h3>
+                  {!listLoading && <span className="hx-panel__count">{total} report{total !== 1 ? 's' : ''}</span>}
+                </div>
+                <button type="button" className="hx-icon-btn" onClick={() => setPanelOpen(false)}
+                        aria-label="Hide report list" tabIndex={panelOpen ? 0 : -1}>
+                  <PanelLeftClose size={18} aria-hidden="true" />
+                </button>
               </div>
+
               <ReportFilters
                 category={category} status={status} sort={sort} searchInput={searchInput}
                 onCategory={onCategory} onStatus={onStatus} onSort={onSort}
                 onSearch={onSearch} onClear={clearFilters}
                 showDistanceSort={true}
               />
-              <div className="civic-list-scroll" ref={listRef}>
+
+              <div className="hx-panel__list" ref={listRef}>
                 {listLoading ? (
-                  <Skeleton count={4} compact />
+                  <Skeleton count={3} compact />
                 ) : listError ? (
                   <div className="alert alert--error">{listError}</div>
                 ) : reports.length === 0 ? (
@@ -669,34 +674,16 @@ export default function Home() {
                   ))
                 )}
               </div>
+
               {totalPages > 1 && !listLoading && (
-                <div className="civic-list-pagination">
+                <div className="hx-panel__foot">
                   <Pagination page={page} totalPages={totalPages} onChange={setPage} />
                 </div>
               )}
             </aside>
-
-            <div
-              className={`civic-split__map${mobileView === 'list' ? ' civic-split__map--hidden' : ''}`}
-              aria-label="Reports map"
-            >
-              <LazyReportMap
-                reports={reports} loading={listLoading} error={listError}
-                center={mapCenter} zoom={mapZoom}
-                activeId={activeId} onMarkerClick={handleMarkerClick}
-              />
-              <p className="map-attribution">
-                Map data ©{' '}
-                <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
-                  OpenStreetMap
-                </a>{' '}
-                contributors
-              </p>
-            </div>
           </div>
-        </section>
-      </div>
-      </div>
+        </div>
+      </section>
 
       {/* ══════ 5. HOW IT WORKS ══════ */}
       <HowItWorks />

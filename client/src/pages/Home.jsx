@@ -316,7 +316,7 @@ function CommunitySection() {
           {/* Photo */}
           <Reveal className="community-split__image-wrap">
               <img
-              src="/images/community.jpg"
+              src="https://images.unsplash.com/photo-1518389902083-b8d6104fc7c9?w=960&h=640&fit=crop&q=80"
               alt="Residential street in the evening with lit houses and community members visible"
               className="community-split__image"
               loading="lazy"
@@ -535,7 +535,7 @@ export default function Home() {
       {/* ══════ 1. HERO ══════ */}
       <section className="hx-hero" aria-label="Welcome to FixMyTown">
         <div className="hx-hero__bg" aria-hidden="true">
-          <img src="/images/hero.jpg" alt="" className="hx-hero__photo" fetchpriority="high" decoding="async"
+          <img src="https://images.unsplash.com/photo-1449429473617-4372f478504a?w=1200&h=800&fit=crop&q=80" alt="" className="hx-hero__photo" fetchpriority="high" decoding="async"
                onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           <div className="hx-hero__grid" />
         </div>

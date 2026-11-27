@@ -299,13 +299,17 @@ export default function NewReport() {
     setServerError('');
     setSubmitting(true);
     try {
+      if (!imageFile) {
+        setStepErrors((p) => ({ ...p, image: 'A photo is required.' }));
+        return;
+      }
       const fd = new FormData();
       fd.append('title',       title.trim());
       fd.append('category',    category);
       fd.append('description', description.trim());
       fd.append('latitude',    String(position[0]));
       fd.append('longitude',   String(position[1]));
-      if (imageFile) fd.append('image', imageFile);
+      fd.append('image', imageFile);
 
       const data = await createReport(fd);
 
@@ -612,7 +616,7 @@ export default function NewReport() {
         <div className="wizard-step" aria-labelledby="step2-heading">
           <h1 id="step2-heading" className="wizard-step__title">Add a photo and send</h1>
           <p className="wizard-step__sub">
-            A photo helps admins understand the problem quickly. It's optional.
+            A photo helps admins understand the problem quickly. It's required.
           </p>
 
           {/* Photo drop zone */}
@@ -685,7 +689,7 @@ export default function NewReport() {
             type="button"
             className="btn btn--primary btn--lg btn--block"
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || !imageFile}
             aria-busy={submitting}
           >
             {submitting && <Loader2 size={16} className="spin" aria-hidden="true" />}

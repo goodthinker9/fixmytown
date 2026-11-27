@@ -2,6 +2,8 @@
 const request = require('supertest');
 const app = require('../app');
 const { cleanupTestData, closePool } = require('./helpers/db');
+const { pool } = require('../config/db');
+const { deleteReportImage } = require('../utils/storage');
 
 const SUFFIX = Date.now();
 const EMAIL = `jest_test_reports_${SUFFIX}@test.com`;
@@ -9,6 +11,22 @@ const PASSWORD = 'testpass123'; // 9 chars — satisfies min-8
 
 let token;
 let createdReportId;
+
+// ── Test fixtures ──
+// Minimal valid 1×1 PNG so sharp can process it in createReport.
+const TEST_IMAGE = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64'
+);
+
+// Mock storage so uploads don't hit Supabase in tests.
+jest.mock('../utils/storage', () => ({
+  uploadReportImage: jest.fn(() => ({
+    publicUrl: 'https://example.com/storage/fake.webp',
+    storagePath: 'fake.webp',
+  })),
+  deleteReportImage: jest.fn(),
+}));
 
 beforeAll(async () => {
   await request(app).post('/api/auth/register').send({
@@ -73,7 +91,8 @@ describe('POST /api/reports', () => {
       .field('description', 'A large pothole that is at least ten characters long')
       .field('category', 'roads')
       .field('latitude', '-1.629')
-      .field('longitude', '6.670');
+      .field('longitude', '6.670')
+      .attach('image', TEST_IMAGE, 'test.png');
 
     expect(res.status).toBe(201);
     expect(res.body.report.category).toBe('roads');
@@ -117,6 +136,75 @@ describe('POST /api/reports', () => {
       .field('longitude', '6.670');
     expect(res.status).toBe(422);
     expect(res.body.details[0].field).toBe('latitude');
+  });
+
+  // ── Image-required tests ─────────────────────────────────────────────────
+
+  it('returns 422 when no image is sent', async () => {
+    const res = await request(app)
+      .post('/api/reports')
+      .set('Authorization', `Bearer ${token}`)
+      .field('title', 'Missing image test title here is long enough')
+      .field('description', 'This description is long enough to pass validation here')
+      .field('category', 'roads')
+      .field('latitude', '-1.629')
+      .field('longitude', '6.670');
+
+    expect(res.status).toBe(422);
+    expect(res.body.error).toBe('A photo is required.');
+  });
+
+  it('returns 422 for an invalid file type', async () => {
+    const res = await request(app)
+      .post('/api/reports')
+      .set('Authorization', `Bearer ${token}`)
+      .field('title', 'Invalid file test title here is long enough')
+      .field('description', 'This description is long enough to pass validation here')
+      .field('category', 'roads')
+      .field('latitude', '-1.629')
+      .field('longitude', '6.670')
+      .attach('image', Buffer.from('not a real image'), 'test.txt');
+
+    expect(res.status).toBe(422);
+  });
+
+  it('deletes uploaded image from storage when DB insert fails', async () => {
+    // Register and login a user
+    const email = `jest_test_cleanup_${Date.now()}@test.com`;
+    await request(app).post('/api/auth/register').send({
+      name: 'Cleanup Test',
+      email,
+      password: 'testpass123',
+    });
+    const login = await request(app).post('/api/auth/login').send({
+      email,
+      password: 'testpass123',
+    });
+    const cleanupToken = login.body.token;
+    const cleanupUserId = login.body.user.id;
+
+    // Delete the user so the FK constraint on reports.user_id fails at insert.
+    await pool.query('delete from users where id = $1', [cleanupUserId]);
+
+    // Reset the delete mock so we only count calls from this test.
+    deleteReportImage.mockClear();
+
+    const res = await request(app)
+      .post('/api/reports')
+      .set('Authorization', `Bearer ${cleanupToken}`)
+      .field('title', 'Cleanup test title here is long enough')
+      .field('description', 'Cleanup test description is long enough for validation here')
+      .field('category', 'roads')
+      .field('latitude', '-1.629')
+      .field('longitude', '6.670')
+      .attach('image', TEST_IMAGE, 'test.png');
+
+    // Insert failure → 500
+    expect(res.status).toBe(500);
+
+    // Compensating cleanup: deleteReportImage was called with the uploaded URL.
+    expect(deleteReportImage).toHaveBeenCalled();
+    expect(deleteReportImage).toHaveBeenCalledWith('https://example.com/storage/fake.webp');
   });
 });
 

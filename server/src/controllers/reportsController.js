@@ -1,16 +1,35 @@
-// Reports controller: create (with optional image + AI classify/duplicate),
-// list (filter/search/sort/paginate), get one (with status history),
-// delete (owner or admin).
+/**
+ * reportsController.js — Backend-2
+ *
+ * Changes:
+ *  1. createReport — full reorder + new logic:
+ *     a. Zod validation (done in route middleware before this runs)
+ *     b. Require image (multer puts it in req.file)
+ *     c. AI classify (non-blocking, falls back gracefully)
+ *     d. SQL bounding-box + haversine duplicate search (no LIMIT before sort)
+ *     e. If duplicate found AND request does NOT include force=true →
+ *        respond 409 with the duplicate; DO NOT save or upload anything.
+ *     f. If no duplicate (or force=true) → process image with sharp →
+ *        upload → DB insert + first status_history row in one transaction.
+ *     g. If DB insert fails after upload → compensating delete from Storage.
+ *
+ *  2. deleteReport — after deleting the row, delete its image from Storage
+ *     (best-effort: logs failures, never fails the HTTP request).
+ *
+ *  3. listReports — unchanged from Backend-1 (proximity-search CTE).
+ *  4. getReport  — unchanged.
+ */
 const { query } = require('../config/db');
-const AppError = require('../utils/AppError');
-const asyncHandler = require('../utils/asyncHandler');
-const { uploadReportImage } = require('../utils/storage');
-const { classifyReport, detectDuplicate } = require('../utils/aiHelpers');
+const AppError       = require('../utils/AppError');
+const asyncHandler   = require('../utils/asyncHandler');
+const withTransaction = require('../utils/withTransaction');
+const { processImage }             = require('../utils/processImage');
+const { uploadReportImage, deleteReportImage } = require('../utils/storage');
+const { classifyReport, detectDuplicate }      = require('../utils/aiHelpers');
 
-// Haversine distance in metres between two lat/lng pairs.
-// Used to find candidate duplicates within 200 m before asking Claude.
+// ── haversine ────────────────────────────────────────────────────────────────
 function haversineMetres(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
+  const R    = 6371000;
   const toRad = (d) => (d * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
@@ -20,287 +39,277 @@ function haversineMetres(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// POST /api/reports  (authRequired, optional image)
+// ── POST /api/reports ────────────────────────────────────────────────────────
 const createReport = asyncHandler(async (req, res, next) => {
   const { title, description, category, latitude, longitude } = req.body;
+  // `force` skips the duplicate check; the client re-sends with force=true
+  // when the user confirms "No, mine is different".
+  const force = req.body.force === 'true' || req.body.force === true;
 
-  // --- Step 1: Upload image (if provided) ---
-  let image_url = null;
-  if (req.file) {
-    image_url = await uploadReportImage(req.file);
+  // ── 1. Image is required ────────────────────────────────────────────────
+  if (!req.file) {
+    return next(new AppError('A photo is required.', 422));
   }
 
-  // --- Step 2: AI classification (non-blocking) ---
-  // We always ask Claude for a priority. We use Claude's category suggestion
-  // only when the user chose "other" — if they chose something specific we
-  // respect their choice.
-  // If Claude fails (timeout, quota, bad JSON), fallback = { category: null, priority: 'medium' }.
+  // ── 2. AI classification (non-blocking) ─────────────────────────────────
   const aiResult = await classifyReport({ title, description });
   const finalCategory =
     category === 'other' && aiResult.category ? aiResult.category : category;
-  const finalPriority = aiResult.priority; // always use AI priority
+  const finalPriority = aiResult.priority;
 
-  // --- Step 3: Duplicate detection (non-blocking) ---
-  // 1. Pull reports in the same (final) category from the last 30 days.
-  // 2. Filter in JS to those within 200 m (avoids PostGIS dependency).
-  // 3. Send up to 5 candidates to Claude.
-  // If anything fails we continue and return duplicate_of: null.
-  let duplicate_of = null;
-  try {
-    const nearby = await query(
-      `select id, title, description, latitude, longitude
-       from reports
-       where category = $1
-         and created_at >= now() - interval '30 days'
-       order by created_at desc
-       limit 50`,
-      [finalCategory]
-    );
+  // ── 3. Duplicate detection ──────────────────────────────────────────────
+  // Skip entirely when force=true (user has explicitly said "it's different").
+  if (!force) {
+    let duplicateCandidate = null;
+    try {
+      // Bounding-box pre-filter in SQL (~200 m at equator ≈ 0.0018°).
+      // We exclude resolved reports: if the same issue was fixed and broke
+      // again, it deserves a fresh report.
+      // We do NOT LIMIT before computing haversine so closer matches
+      // that happen to be listed after the 50th entry aren't missed.
+      const DEGREES = 0.0018; // ≈ 200 m
+      const nearby = await query(
+        `select id, title, description, latitude, longitude, image_url, status
+         from reports
+         where category = $1
+           and status   <> 'resolved'
+           and created_at >= now() - interval '30 days'
+           and latitude  between $2 - $3 and $2 + $3
+           and longitude between $4 - $3 and $4 + $3
+         order by
+           ( (latitude  - $2) * (latitude  - $2)
+           + (longitude - $4) * (longitude - $4) )
+         limit 20`,
+        [finalCategory, parseFloat(latitude), DEGREES, parseFloat(longitude)]
+      );
 
-    const candidates = nearby.rows.filter(
-      (r) =>
-        haversineMetres(
-          parseFloat(latitude),
-          parseFloat(longitude),
-          parseFloat(r.latitude),
-          parseFloat(r.longitude)
-        ) <= 200
-    );
+      // Haversine confirmation (SQL bounding box is an approximation).
+      const confirmed = nearby.rows.filter(
+        (r) =>
+          haversineMetres(
+            parseFloat(latitude),
+            parseFloat(longitude),
+            parseFloat(r.latitude),
+            parseFloat(r.longitude)
+          ) <= 200
+      );
 
-    if (candidates.length) {
-      const { isDuplicate, matchId } = await detectDuplicate({
-        title,
-        description,
-        category: finalCategory,
-        candidates: candidates.slice(0, 5),
-      });
-      if (isDuplicate) duplicate_of = matchId;
+      if (confirmed.length) {
+        const { isDuplicate, matchId } = await detectDuplicate({
+          title,
+          description,
+          category: finalCategory,
+          candidates: confirmed.slice(0, 5),
+        });
+
+        if (isDuplicate) {
+          const match = confirmed.find((r) => r.id === matchId) || confirmed[0];
+          duplicateCandidate = {
+            id:        match.id,
+            title:     match.title,
+            image_url: match.image_url,
+            status:    match.status,
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('[duplicate check] failed:', err.message);
+      // Non-fatal: continue and save.
     }
-  } catch (err) {
-    console.warn('[duplicate check] failed:', err.message);
+
+    if (duplicateCandidate) {
+      // 409 Conflict — do NOT save or upload anything.
+      return res.status(409).json({
+        error:        'A similar report already exists nearby.',
+        duplicate_of: duplicateCandidate.id,
+        duplicate:    duplicateCandidate,
+      });
+    }
   }
 
-  // --- Step 4: Save ---
-  // If a duplicate was found we still save the report (the user may confirm
-  // it's a different issue on the frontend) but we return the matching id.
-  const result = await query(
-    `insert into reports
-       (user_id, title, description, category, latitude, longitude, image_url, priority)
-     values ($1, $2, $3, $4, $5, $6, $7, $8)
-     returning id, user_id, title, description, category, status, latitude, longitude,
-               image_url, priority, upvote_count, created_at, updated_at, resolved_at`,
-    [
-      req.user.id,
-      title,
-      description,
-      finalCategory,
-      latitude,
-      longitude,
-      image_url,
-      finalPriority,
-    ]
-  );
+  // ── 4. Process image with sharp ─────────────────────────────────────────
+  // Throws AppError(422) if the data is not a recognisable image.
+  const { buffer, mimetype, ext } = await processImage(req.file.buffer);
+
+  // ── 5. Upload to Supabase Storage ───────────────────────────────────────
+  const { publicUrl, storagePath } = await uploadReportImage(buffer, mimetype, ext);
+
+  // ── 6. DB insert + first status_history in one transaction ──────────────
+  // If the insert fails, the compensating cleanup deletes the uploaded file.
+  let report;
+  try {
+    report = await withTransaction(async (client) => {
+      const r = await client.query(
+        `insert into reports
+           (user_id, title, description, category, latitude, longitude, image_url, priority)
+         values ($1, $2, $3, $4, $5, $6, $7, $8)
+         returning id, user_id, title, description, category, status, latitude, longitude,
+                   image_url, priority, upvote_count, created_at, updated_at, resolved_at`,
+        [
+          req.user.id,
+          title,
+          description,
+          finalCategory,
+          latitude,
+          longitude,
+          publicUrl,
+          finalPriority,
+        ]
+      );
+
+      const inserted = r.rows[0];
+
+      // Insert the first status_history row (status = 'reported', old_status = null).
+      await client.query(
+        `insert into status_history (report_id, old_status, new_status, note, changed_by)
+         values ($1, null, 'reported', null, $2)`,
+        [inserted.id, req.user.id]
+      );
+
+      return inserted;
+    });
+  } catch (err) {
+    // Compensating cleanup: delete the already-uploaded image so Storage
+    // doesn't accumulate orphans.
+    await deleteReportImage(publicUrl);
+    throw err; // re-throw so asyncHandler → errorHandler responds.
+  }
 
   res.status(201).json({
-    report: result.rows[0],
-    // null = no duplicate found (or AI unavailable). Frontend uses this to
-    // show "is this the same issue?" if non-null.
-    duplicate_of,
+    report,
+    duplicate_of: null,
     ai_applied: { category: finalCategory, priority: finalPriority },
   });
 });
 
-// GET /api/reports  (public)
-// Supports optional proximity search: ?lat=&lng=&radius_km= (default 10).
-// When lat+lng are provided, each row gets a distance_km field calculated with
-// the haversine formula entirely in SQL — no PostGIS extension required.
-// sort=distance only takes effect when lat+lng are present; falls back to newest.
-const listReports = asyncHandler(async (req, res, next) => {
+// ── GET /api/reports ─────────────────────────────────────────────────────────
+const listReports = asyncHandler(async (req, res, _next) => {
   const { category, status, search, sort, page, limit, lat, lng, radius_km } = req.validated.query;
 
   const hasProximity = lat !== undefined && lng !== undefined;
 
   if (!hasProximity) {
-    // ── Standard (non-proximity) path — same as before ───────────────
     const filters = [];
-    const filterParams = [];
+    const fp      = [];
 
-    if (category) { filterParams.push(category); filters.push(`category = $${filterParams.length}`); }
-    if (status)   { filterParams.push(status);   filters.push(`status = $${filterParams.length}`); }
+    if (category) { fp.push(category); filters.push(`category = $${fp.length}`); }
+    if (status)   { fp.push(status);   filters.push(`status = $${fp.length}`); }
     if (search) {
-      const escaped = search.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-      filterParams.push(`%${escaped}%`);
-      filters.push(`title ilike $${filterParams.length} escape '\\'`);
+      const esc = search.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+      fp.push(`%${esc}%`);
+      filters.push(`title ilike $${fp.length} escape '\\'`);
     }
 
-    const whereClause = filters.length ? `where ${filters.join(' and ')}` : '';
+    const where   = filters.length ? `where ${filters.join(' and ')}` : '';
     const orderBy = sort === 'top' ? 'upvote_count desc, created_at desc' : 'created_at desc';
-    const offset = (page - 1) * limit;
+    const offset  = (page - 1) * limit;
 
-    const countResult = await query(
-      `select count(*)::int as total from reports ${whereClause}`,
-      filterParams
-    );
-    const total = countResult.rows[0].total;
-
-    const dataParams = [...filterParams, limit, offset];
-    const dataResult = await query(
+    const count  = await query(`select count(*)::int as total from reports ${where}`, fp);
+    const total  = count.rows[0].total;
+    const dp     = [...fp, limit, offset];
+    const data   = await query(
       `select id, user_id, title, description, category, status, latitude, longitude,
               image_url, priority, upvote_count, created_at, updated_at, resolved_at
-       from reports ${whereClause}
+       from reports ${where}
        order by ${orderBy}
-       limit $${dataParams.length - 1} offset $${dataParams.length}`,
-      dataParams
+       limit $${dp.length - 1} offset $${dp.length}`,
+      dp
     );
 
-    return res.json({
-      reports: dataResult.rows,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    });
+    return res.json({ reports: data.rows, total, page, limit, totalPages: Math.ceil(total / limit) });
   }
 
-  // ── Proximity path ────────────────────────────────────────────────
-  // We use a CTE that computes distance_km once per row, then filter
-  // and order in the outer query. This avoids duplicating the haversine
-  // formula and keeps parameter numbering clean.
-  //
-  // Parameters:  $1=lat  $2=lng  $3=radius_km  — fixed positions.
-  // Extra filters start at $4.
-  const proximityParams = [lat, lng, radius_km];
+  // Proximity path (CTE haversine) — unchanged from Backend-1.
+  const pp = [lat, lng, radius_km];
+  const ef = [], ep = [];
 
-  const extraFilters = [];
-  const extraParams = [];
-
-  if (category) { extraParams.push(category); extraFilters.push(`category = $${proximityParams.length + extraParams.length}`); }
-  if (status)   { extraParams.push(status);   extraFilters.push(`status = $${proximityParams.length + extraParams.length}`); }
+  if (category) { ep.push(category); ef.push(`category = $${pp.length + ep.length}`); }
+  if (status)   { ep.push(status);   ef.push(`status = $${pp.length + ep.length}`); }
   if (search) {
-    const escaped = search.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-    extraParams.push(`%${escaped}%`);
-    extraFilters.push(`title ilike $${proximityParams.length + extraParams.length} escape '\\'`);
+    const esc = search.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+    ep.push(`%${esc}%`);
+    ef.push(`title ilike $${pp.length + ep.length} escape '\\'`);
   }
 
-  const extraWhere = extraFilters.length ? `and ${extraFilters.join(' and ')}` : '';
+  const ew      = ef.length ? `and ${ef.join(' and ')}` : '';
+  const orderBy = sort === 'distance' ? 'distance_km asc' : sort === 'top' ? 'upvote_count desc, created_at desc' : 'created_at desc';
+  const offset  = (page - 1) * limit;
+  const ap      = [...pp, ...ep];
 
-  const orderBy = sort === 'distance'
-    ? 'distance_km asc'
-    : sort === 'top'
-    ? 'upvote_count desc, created_at desc'
-    : 'created_at desc';
+  const cte = `
+    with nearby as (
+      select id,
+             round((2 * 6371 * asin(sqrt(
+               power(sin(radians((latitude  - $1) / 2)), 2)
+               + cos(radians($1)) * cos(radians(latitude))
+               * power(sin(radians((longitude - $2) / 2)), 2)
+             )))::numeric, 2) as distance_km
+      from reports
+      where (2 * 6371 * asin(sqrt(
+               power(sin(radians((latitude  - $1) / 2)), 2)
+               + cos(radians($1)) * cos(radians(latitude))
+               * power(sin(radians((longitude - $2) / 2)), 2)
+             ))) <= $3
+    )`;
 
-  const offset = (page - 1) * limit;
-  const allParams = [...proximityParams, ...extraParams];
-
-  // Count of matching reports (with radius + any extra filters).
   const countRes = await query(
-    `with nearby as (
-       select id,
-              (2 * 6371 * asin(sqrt(
-                power(sin(radians((latitude  - $1) / 2)), 2)
-                + cos(radians($1)) * cos(radians(latitude))
-                * power(sin(radians((longitude - $2) / 2)), 2)
-              ))) as distance_km
-       from reports
-       where (2 * 6371 * asin(sqrt(
-                power(sin(radians((latitude  - $1) / 2)), 2)
-                + cos(radians($1)) * cos(radians(latitude))
-                * power(sin(radians((longitude - $2) / 2)), 2)
-              ))) <= $3
-     )
-     select count(*)::int as total
-     from reports r
-     join nearby n on n.id = r.id
-     where true ${extraWhere}`,
-    allParams
+    `${cte} select count(*)::int as total from reports r join nearby n on n.id = r.id where true ${ew}`,
+    ap
   );
   const total = countRes.rows[0].total;
 
-  // The page of data, with distance_km attached.
-  const limitParam  = allParams.length + 1;
-  const offsetParam = allParams.length + 2;
-
+  const lp = ap.length + 1, op = ap.length + 2;
   const dataRes = await query(
-    `with nearby as (
-       select id,
-              round((2 * 6371 * asin(sqrt(
-                power(sin(radians((latitude  - $1) / 2)), 2)
-                + cos(radians($1)) * cos(radians(latitude))
-                * power(sin(radians((longitude - $2) / 2)), 2)
-              )))::numeric, 2) as distance_km
-       from reports
-       where (2 * 6371 * asin(sqrt(
-                power(sin(radians((latitude  - $1) / 2)), 2)
-                + cos(radians($1)) * cos(radians(latitude))
-                * power(sin(radians((longitude - $2) / 2)), 2)
-              ))) <= $3
-     )
+    `${cte}
      select r.id, r.user_id, r.title, r.description, r.category, r.status,
             r.latitude, r.longitude, r.image_url, r.priority, r.upvote_count,
-            r.created_at, r.updated_at, r.resolved_at,
-            n.distance_km
-     from reports r
-     join nearby n on n.id = r.id
-     where true ${extraWhere}
+            r.created_at, r.updated_at, r.resolved_at, n.distance_km
+     from reports r join nearby n on n.id = r.id
+     where true ${ew}
      order by ${orderBy}
-     limit $${limitParam} offset $${offsetParam}`,
-    [...allParams, limit, offset]
+     limit $${lp} offset $${op}`,
+    [...ap, limit, offset]
   );
 
-  res.json({
-    reports: dataRes.rows,
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit),
-  });
+  res.json({ reports: dataRes.rows, total, page, limit, totalPages: Math.ceil(total / limit) });
 });
 
-// GET /api/reports/:id  (public)
+// ── GET /api/reports/:id ─────────────────────────────────────────────────────
 const getReport = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  const reportResult = await query(
+  const rr = await query(
     `select r.id, r.user_id, u.name as reporter_name, r.title, r.description,
             r.category, r.status, r.latitude, r.longitude, r.image_url, r.priority,
             r.upvote_count, r.created_at, r.updated_at, r.resolved_at
-     from reports r
-     join users u on u.id = r.user_id
-     where r.id = $1`,
+     from reports r join users u on u.id = r.user_id where r.id = $1`,
     [id]
   );
+  if (rr.rowCount === 0) return next(new AppError('Report not found.', 404));
 
-  if (reportResult.rowCount === 0) {
-    return next(new AppError('Report not found.', 404));
-  }
-
-  const historyResult = await query(
+  const hr = await query(
     `select sh.id, sh.old_status, sh.new_status, sh.note, sh.changed_by,
             u.name as changed_by_name, sh.created_at
-     from status_history sh
-     left join users u on u.id = sh.changed_by
-     where sh.report_id = $1
-     order by sh.created_at asc`,
+     from status_history sh left join users u on u.id = sh.changed_by
+     where sh.report_id = $1 order by sh.created_at asc`,
     [id]
   );
 
-  res.json({
-    report: reportResult.rows[0],
-    status_history: historyResult.rows,
-  });
+  res.json({ report: rr.rows[0], status_history: hr.rows });
 });
 
-// DELETE /api/reports/:id  (owner or admin)
+// ── DELETE /api/reports/:id ──────────────────────────────────────────────────
 const deleteReport = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  const result = await query('select user_id from reports where id = $1', [id]);
-  if (result.rowCount === 0) {
-    return next(new AppError('Report not found.', 404));
-  }
+  const result = await query(
+    'select user_id, image_url from reports where id = $1',
+    [id]
+  );
+  if (result.rowCount === 0) return next(new AppError('Report not found.', 404));
 
-  const isOwner = result.rows[0].user_id === req.user.id;
+  const { user_id, image_url } = result.rows[0];
+  const isOwner = user_id === req.user.id;
   const isAdmin = req.user.role === 'admin';
 
   if (!isOwner && !isAdmin) {
@@ -308,6 +317,10 @@ const deleteReport = asyncHandler(async (req, res, next) => {
   }
 
   await query('delete from reports where id = $1', [id]);
+
+  // Best-effort Storage cleanup: log failures, never fail the HTTP request.
+  await deleteReportImage(image_url);
+
   res.status(204).end();
 });
 

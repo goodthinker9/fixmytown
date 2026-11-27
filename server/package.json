@@ -13,7 +13,9 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "testMatch": ["**/tests/**/*.test.js"],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
     "testTimeout": 30000,
     "verbose": true
   },
@@ -32,6 +34,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.5.0",
     "pg": "^8.12.0",
+    "sharp": "^0.35.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {

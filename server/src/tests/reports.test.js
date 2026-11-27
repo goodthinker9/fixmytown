@@ -334,6 +334,95 @@ describe('GET /api/reports — proximity search', () => {
     for (let i = 1; i < dists.length; i++) {
       expect(dists[i]).toBeGreaterThanOrEqual(dists[i - 1]);
     }
+
+// ── authRequired: user existence on writes, stateless on reads ──────────────────
+describe('authRequired: user existence on writes, stateless on reads', () => {
+  it('POST /api/reports returns 401 when the token user was deleted', async () => {
+    const email = `jest_test_deleted_write_${Date.now()}@test.com`;
+    await request(app).post('/api/auth/register').send({
+      name: 'Deleted Write User',
+      email,
+      password: 'testpass123',
+    });
+    const login = await request(app).post('/api/auth/login').send({
+      email,
+      password: 'testpass123',
+    });
+    const deletedToken = login.body.token;
+    const deletedUserId = login.body.user.id;
+
+    // Delete the account
+    await pool.query('delete from users where id = $1', [deletedUserId]);
+
+    const res = await request(app)
+      .post('/api/reports')
+      .set('Authorization', `Bearer ${deletedToken}`)
+      .field('title', 'Deleted user report title here is long enough')
+      .field('description', 'Deleted user description is long enough for validation here')
+      .field('category', 'roads')
+      .field('latitude', '-1.629')
+      .field('longitude', '6.670')
+      .attach('image', TEST_IMAGE, 'test.png');
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toMatch(/account not found/i);
+  });
+
+  it('DELETE /api/reports/:id returns 401 when the token user was deleted', async () => {
+    const email = `jest_test_deleted_delete_${Date.now()}@test.com`;
+    await request(app).post('/api/auth/register').send({
+      name: 'Deleted Delete User',
+      email,
+      password: 'testpass123',
+    });
+    const login = await request(app).post('/api/auth/login').send({
+      email,
+      password: 'testpass123',
+    });
+    const deletedToken = login.body.token;
+    const deletedUserId = login.body.user.id;
+
+    const reportRes = await pool.query(
+      `insert into reports (user_id, title, description, category, latitude, longitude, priority)
+       values ($1, $2, $3, $4, $5, $6, $7) returning id`,
+      [deletedUserId, 'Deleted user delete test title', 'Desc long enough for validation', 'roads', -1.629, 6.670, 'medium']
+    );
+    const reportId = reportRes.rows[0].id;
+
+    await pool.query('delete from users where id = $1', [deletedUserId]);
+
+    const res = await request(app)
+      .delete(`/api/reports/${reportId}`)
+      .set('Authorization', `Bearer ${deletedToken}`);
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toMatch(/account not found/i);
+  });
+
+  it('GET /api/reports stays stateless — works even after token user is deleted', async () => {
+    const email = `jest_test_deleted_read_${Date.now()}@test.com`;
+    await request(app).post('/api/auth/register').send({
+      name: 'Deleted Read User',
+      email,
+      password: 'testpass123',
+    });
+    const login = await request(app).post('/api/auth/login').send({
+      email,
+      password: 'testpass123',
+    });
+    const deletedToken = login.body.token;
+    const deletedUserId = login.body.user.id;
+
+    await pool.query('delete from users where id = $1', [deletedUserId]);
+
+    const res = await request(app)
+      .get('/api/reports')
+      .set('Authorization', `Bearer ${deletedToken}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.reports)).toBe(true);
+  });
+});
   });
 
   it('caps radius_km at 50 — returns 422 if radius_km > 50', async () => {

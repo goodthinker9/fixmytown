@@ -212,7 +212,7 @@ export default function NewReport() {
 
   // terminal screens
   const [successId,       setSuccessId]       = useState(null);  // report id after submit
-  const [duplicateState,  setDuplicateState]  = useState(null);  // { duplicateId, myId }
+  const [duplicateState,  setDuplicateState]  = useState(null);  // { duplicateId, duplicate }
   const [upvoting,        setUpvoting]        = useState(false);
   const [upvoteError,     setUpvoteError]     = useState('');
 
@@ -321,13 +321,46 @@ export default function NewReport() {
       setSuccessId(data.report.id);
     } catch (err) {
       const d = err.response?.data;
+      // 409 duplicate: show the conflict screen instead of a generic error.
+      if (err.response?.status === 409 && d?.duplicate_of) {
+        setDuplicateState({
+          duplicateId: d.duplicate_of,
+          duplicate: d.duplicate || null,
+        });
+        return;
+      }
       setServerError(d?.error || 'Could not submit your report. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // duplicate: upvote the existing one
+  // Re-submit the current report with force=true to bypass duplicate check.
+  const handleForceSubmit = async () => {
+    if (!imageFile) return;
+    setServerError('');
+    setSubmitting(true);
+    try {
+      const fd = new FormData();
+      fd.append('title', title.trim());
+      fd.append('category', category);
+      fd.append('description', description.trim());
+      fd.append('latitude', String(position[0]));
+      fd.append('longitude', String(position[1]));
+      fd.append('image', imageFile);
+      fd.append('force', 'true');
+
+      const data = await createReport(fd);
+      setSuccessId(data.report.id);
+    } catch (err) {
+      const d = err.response?.data;
+      setServerError(d?.error || 'Could not submit your report. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // duplicate: upvote the existing one (saves nothing)
   const handleUpvoteExisting = async () => {
     if (!duplicateState) return;
     setUpvoting(true);
@@ -343,12 +376,10 @@ export default function NewReport() {
     }
   };
 
-  // duplicate: keep own report
+  // duplicate: keep own report — re-submit with force=true
   const handleKeepMine = () => {
     if (!duplicateState) return;
-    navigate(`/reports/${duplicateState.myId}`, {
-      state: { flash: 'Your report was submitted successfully.' },
-    });
+    handleForceSubmit();
   };
 
   // ── terminal screens ──────────────────────────────────────────────────────

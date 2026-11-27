@@ -63,12 +63,8 @@ export default function Footer() {
             <a href="https://www.anthropic.com" target="_blank" rel="noopener noreferrer">Claude</a>.
           </p>
 
-          {/*
-            Photo credits — paste your real credits in place of the placeholder.
-            Exact text as specified: "Photos: <I will paste real credits here>"
-          */}
+          {/* Add a "Photos: <photographer> via Unsplash/Pexels" line here once you use real photos. */}
           <p className="footer__credits">
-            Photos: &lt;I will paste real credits here&gt;.{' '}
             Map data ©{' '}
             <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
               OpenStreetMap contributors

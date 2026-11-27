@@ -1,26 +1,30 @@
 /**
- * Home — UI-E3
+ * Home — redesign
  *
- * Page order (top → bottom):
- *   1.  Hero               — photo + dark overlay + search card  (UI-E2, unchanged)
- *   2.  Impact strip       — live API stats with count-up        (UI-E2, unchanged)
- *   3.  Category grid      — photo tiles + live counts
- *   4.  Browse / map       — split list + map                    (UI-B-Revised, unchanged)
- *   5.  How it works       — 3 steps + animated connecting line
- *   6.  Community / trust  — split photo + honest copy
- *   7.  CTA band           — gradient band + two buttons
+ * Structure inspired by the common civic-reporting pattern (search-first hero,
+ * live counters, short numbered "how it works", who-it's-for blocks, public map):
+ *   1. Hero            — headline + address search + illustrated app preview
+ *   2. Live stats      — real numbers from /api/stats (overlaps the hero)
+ *   3. Categories      — what can be reported, with live counts
+ *   4. Browse / map    — split list + map (unchanged behaviour)
+ *   5. How it works    — 4 numbered steps
+ *   6. Who it's for    — residents / officials / everyone
+ *   7. Trust section   — why public tracking matters
+ *   8. CTA band
+ *
+ * All colors come from theme.css tokens; no photos are required (an optional
+ * /images/hero.jpg and /images/community.jpg are used if present).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import {
-  Search, LocateFixed, Loader2, List, Map as MapIcon,
-  X, Camera, ThumbsUp, CheckCircle2,
-  FileText, AlertTriangle, Percent,
-  ShieldCheck, Users, Sparkles,
+  Search, LocateFixed, Loader2, List, Map as MapIcon, X, Camera,
+  ThumbsUp, CheckCircle2, FileText, ShieldCheck, Users, Sparkles,
   Droplets, Zap, Construction, Trash2, ShieldAlert, CircleHelp,
-  ArrowRight,
+  ArrowRight, MapPin, Landmark, Eye,
+  Wrench, Percent,
 } from 'lucide-react';
 
 import ReportFilters from '../components/ReportFilters.jsx';
@@ -38,8 +42,13 @@ import { useCountUp }       from '../hooks/useCountUp.js';
 import { useReducedMotion } from '../hooks/useReducedMotion.js';
 import useAuth from '../hooks/useAuth.js';
 
+import '../home.css';
+
 const LIMIT          = 12;
 const DEFAULT_RADIUS = 25; // km
+
+const scrollToId = (id) =>
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
 // ── Geocoder search box ───────────────────────────────────────────────────────
 function GeocoderBox({ onSelect }) {
@@ -97,175 +106,120 @@ function GeocoderBox({ onSelect }) {
   );
 }
 
-// ── Trust chips ───────────────────────────────────────────────────────────────
-const TRUST_CHIPS = [
-  { icon: ShieldCheck, label: 'Free to use' },
-  { icon: Users,       label: 'Public and transparent' },
-  { icon: Sparkles,    label: 'AI-assisted triage' },
-];
-
-// ── Single impact counter ─────────────────────────────────────────────────────
-function ImpactStat({ value, suffix = '', label, color, loading }) {
-  const ref    = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-80px' });
-  const count  = useCountUp(value ?? 0, { started: inView && !loading, duration: 1600 });
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// HERO PREVIEW — an illustration of the product (decorative, no real data)
+// ═══════════════════════════════════════════════════════════════════════════════
+function HeroPreview() {
   return (
-    <div ref={ref} className={`impact-stat impact-stat--${color}`}>
-      <div className="impact-stat__value" aria-label={`${value}${suffix} ${label}`}>
-        {loading ? (
-          <span className="skeleton skeleton--stat-lg" aria-hidden="true" />
-        ) : (
-          <>{count.toLocaleString()}{suffix && <span className="impact-stat__suffix">{suffix}</span>}</>
-        )}
+    <div className="hx-preview" aria-hidden="true">
+      <div className="hx-phone">
+        <div className="hx-phone__notch" />
+        <div className="hx-phone__map">
+          <svg viewBox="0 0 320 250" preserveAspectRatio="xMidYMid slice" className="hx-phone__svg">
+            <rect width="320" height="250" fill="#e3eeed" />
+            <path d="M-10 190 C 70 160, 120 215, 190 180 S 300 140, 340 165" fill="none" stroke="#b9dcec" strokeWidth="22" strokeLinecap="round" />
+            {[[14,14,70,48],[96,14,60,48],[170,14,70,36],[254,14,60,60],[14,78,70,56],[96,78,60,44],[254,86,60,52],[14,150,56,30],[104,196,66,44],[190,206,56,34],[262,200,54,40]].map(([x,y,w,h],i) => (
+              <rect key={i} x={x} y={y} width={w} height={h} rx="6" fill="#f4f8f7" />
+            ))}
+            <path d="M0 70 H320 M88 0 V250 M246 0 V250 M0 140 H320" stroke="#ffffff" strokeWidth="7" />
+            <path d="M-10 40 L330 215" stroke="#ffffff" strokeWidth="9" />
+          </svg>
+          <span className="hx-pin hx-pin--a"><MapPin size={18} /></span>
+          <span className="hx-pin hx-pin--b"><MapPin size={18} /></span>
+          <span className="hx-pin hx-pin--c"><span className="hx-pin__ring" /><MapPin size={22} /></span>
+        </div>
+        <div className="hx-phone__sheet">
+          <span className="hx-phone__chip"><Droplets size={13} /> Water</span>
+          <strong className="hx-phone__title">Broken water point</strong>
+          <span className="hx-phone__meta"><MapPin size={12} /> Pinned on map &nbsp;·&nbsp; <Camera size={12} /> Photo attached</span>
+          <div className="hx-phone__track">
+            <span className="is-done" /><span className="is-active" /><span />
+          </div>
+          <div className="hx-phone__labels"><span>Reported</span><span>In progress</span><span>Fixed</span></div>
+        </div>
       </div>
-      <div className="impact-stat__label">{label}</div>
+      <div className="hx-float hx-float--a"><ThumbsUp size={16} /> Neighbours confirm it</div>
+      <div className="hx-float hx-float--b"><CheckCircle2 size={16} /> Public status updates</div>
+      <div className="hx-float hx-float--c"><Sparkles size={16} /> AI-assisted priority</div>
     </div>
   );
 }
 
-// ── Impact strip ──────────────────────────────────────────────────────────────
-function ImpactStrip() {
-  const [stats,   setStats]   = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getPublicStats().then(setStats).catch(() => {}).finally(() => setLoading(false));
-  }, []);
-
-  const resolvedRate = stats?.total > 0
-    ? Math.round((stats.resolved / stats.total) * 100)
-    : null;
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// LIVE STATS
+// ═══════════════════════════════════════════════════════════════════════════════
+function Stat({ icon: Icon, value, suffix = '', label, tone, loading }) {
+  const ref    = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '-60px' });
+  const count  = useCountUp(value ?? 0, { started: inView && !loading, duration: 1400 });
   return (
-    <section id="impact" className="impact-strip" aria-labelledby="impact-heading">
-      <div className="container">
-        <Reveal>
-          <h2 id="impact-heading" className="impact-strip__title">Real problems. Real fixes.</h2>
-        </Reveal>
-        <div className="impact-grid">
-          <Reveal delay={0.05}><ImpactStat value={stats?.total}       label="Reports submitted" color="blue"  loading={loading} /></Reveal>
-          <Reveal delay={0.10}><ImpactStat value={stats?.resolved}    label="Issues resolved"   color="green" loading={loading} /></Reveal>
-          <Reveal delay={0.15}><ImpactStat value={stats?.in_progress} label="In progress"       color="amber" loading={loading} /></Reveal>
-          <Reveal delay={0.20}><ImpactStat value={resolvedRate ?? 0}  label="Resolved rate" suffix="%" color="teal" loading={loading} /></Reveal>
+    <div ref={ref} className="hx-stat">
+      <span className={`hx-stat__icon hx-tone--${tone}`}><Icon size={20} aria-hidden="true" /></span>
+      <div>
+        <div className="hx-stat__value" aria-label={`${value ?? 0}${suffix} ${label}`}>
+          {loading ? <span className="skeleton skeleton--stat-lg" aria-hidden="true" />
+                   : <>{count.toLocaleString()}{suffix}</>}
         </div>
+        <div className="hx-stat__label">{label}</div>
+      </div>
+    </div>
+  );
+}
+
+function StatsStrip({ stats, loading }) {
+  const rate = stats?.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0;
+  return (
+    <section className="hx-stats-wrap" aria-label="Live community statistics">
+      <div className="hx-container">
+        <Reveal>
+          <div className="hx-stats">
+            <Stat icon={FileText}     value={stats?.total}       label="Reports submitted" tone="teal"  loading={loading} />
+            <Stat icon={CheckCircle2} value={stats?.resolved}    label="Issues fixed"      tone="green" loading={loading} />
+            <Stat icon={Wrench}       value={stats?.in_progress} label="Being worked on"   tone="blue"  loading={loading} />
+            <Stat icon={Percent}      value={rate} suffix="%"    label="Fix rate"          tone="coral" loading={loading} />
+          </div>
+        </Reveal>
       </div>
     </section>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CATEGORIES GRID
-// Each tile has a photo, dark overlay, icon, label, and the real live count.
-// Clicking applies the category filter and scrolls to #browse.
+// CATEGORIES
 // ═══════════════════════════════════════════════════════════════════════════════
-const CATEGORY_TILES = [
-  {
-    value: 'water',
-    label: 'Water',
-    icon: Droplets,
-    // Use .jpg when available; keep .svg as the placeholder fallback.
-    img: '/images/water.jpg',
-    alt: 'A communal water tap on a town street',
-    color: '#2563eb',
-  },
-  {
-    value: 'roads',
-    label: 'Roads',
-    icon: Construction,
-    img: '/images/roads.jpg',
-    alt: 'A road with surface damage and potholes',
-    color: '#64748b',
-  },
-  {
-    value: 'garbage',
-    label: 'Garbage',
-    icon: Trash2,
-    img: '/images/garbage.jpg',
-    alt: 'Overflowing rubbish bins on a street corner',
-    color: '#16a34a',
-  },
-  {
-    value: 'electricity',
-    label: 'Electricity',
-    icon: Zap,
-    img: '/images/electricity.jpg',
-    alt: 'Power poles and electricity lines in a residential neighbourhood',
-    color: '#d97706',
-  },
-  {
-    value: 'safety',
-    label: 'Safety',
-    icon: ShieldAlert,
-    img: null,
-    color: '#dc2626',
-  },
-  {
-    value: 'other',
-    label: 'Other',
-    icon: CircleHelp,
-    img: null,
-    color: '#7c3aed',
-  },
+const CATEGORIES = [
+  { value: 'water',       label: 'Water',       icon: Droplets,     tone: 'blue',   desc: 'Broken taps, leaking pipes, dry water points' },
+  { value: 'electricity', label: 'Electricity', icon: Zap,          tone: 'amber',  desc: 'Power cuts, fallen lines, broken street lights' },
+  { value: 'roads',       label: 'Roads',       icon: Construction, tone: 'slate',  desc: 'Potholes, damaged roads, blocked drains' },
+  { value: 'garbage',     label: 'Garbage',     icon: Trash2,       tone: 'green',  desc: 'Overflowing bins, illegal dumping, litter' },
+  { value: 'safety',      label: 'Safety',      icon: ShieldAlert,  tone: 'red',    desc: 'Unsafe spots, missing signs, open manholes' },
+  { value: 'other',       label: 'Other',       icon: CircleHelp,   tone: 'violet', desc: 'Anything else that affects your neighbourhood' },
 ];
 
-function CategoryGrid({ stats, statsLoading, onCategoryClick }) {
+function Categories({ stats, onPick }) {
   return (
-    <section className="section-spacing" aria-labelledby="categories-heading">
-      <div className="container">
+    <section className="hx-section" aria-labelledby="hx-cat-title">
+      <div className="hx-container">
         <Reveal>
-          <div className="section-header">
-            <h2 id="categories-heading" className="section-title">Browse by category</h2>
-            <p className="section-sub">
-              Every report is tagged so issues reach the right team faster.
-            </p>
-          </div>
+          <header className="hx-head">
+            <span className="hx-eyebrow">What can you report?</span>
+            <h2 id="hx-cat-title" className="hx-title">Every problem, in the right place</h2>
+            <p className="hx-lead">Pick a category to see what has already been reported near you.</p>
+          </header>
         </Reveal>
-
-        <div className="cat-grid" role="list">
-          {CATEGORY_TILES.map(({ value, label, icon: Icon, img, alt }, i) => {
-            const count = stats?.by_category?.[value];
+        <div className="hx-cats">
+          {CATEGORIES.map(({ value, label, icon: Icon, tone, desc }, i) => {
+            const n = stats?.by_category?.[value];
             return (
-              <Reveal key={value} delay={i * 0.06}>
-                <button
-                  type="button"
-                  className={`cat-tile${!img ? ' cat-tile--icon-only' : ''}`}
-                  onClick={() => onCategoryClick(value)}
-                  aria-label={`${label} — ${count ?? '…'} report${count !== 1 ? 's' : ''}. Click to filter.`}
-                  role="listitem"
-                >
-                  {img ? (
-                    <>
-                      <img
-                        src={img}
-                        alt={alt}
-                        className="cat-tile__photo"
-                        loading="lazy"
-                        width="400"
-                        height="270"
-                        onError={(e) => {
-                          // Hide the broken image; the tile CSS fallback gradient shows.
-                          e.currentTarget.classList.add('cat-tile__photo--error');
-                          e.currentTarget.closest('.cat-tile')?.classList.add('cat-tile--img-error');
-                        }}
-                      />
-                      <div className="cat-tile__overlay" />
-                    </>
-                  ) : (
-                    // Icon-only: .cat-tile--icon-only gets the dark gradient via CSS
-                    <div className="cat-tile__bg" aria-hidden="true" />
-                  )}
-                  <div className="cat-tile__content">
-                    <span className="cat-tile__icon" aria-hidden="true">
-                      <Icon size={img ? 26 : 32} />
-                    </span>
-                    <span className="cat-tile__label">{label}</span>
-                    <span className="cat-tile__count" aria-hidden="true">
-                      {statsLoading
-                        ? <span className="skeleton skeleton--count" />
-                        : count ?? '—'}
-                    </span>
-                  </div>
+              <Reveal key={value} delay={i * 0.05}>
+                <button type="button" className="hx-cat" onClick={() => onPick(value)}
+                        aria-label={`${label}: ${n ?? 0} reports. Show them.`}>
+                  <span className={`hx-cat__icon hx-tone--${tone}`}><Icon size={24} aria-hidden="true" /></span>
+                  <span className="hx-cat__body">
+                    <span className="hx-cat__name">{label}</span>
+                    <span className="hx-cat__desc">{desc}</span>
+                  </span>
+                  <span className="hx-cat__count">{n ?? 0}</span>
                 </button>
               </Reveal>
             );
@@ -277,80 +231,71 @@ function CategoryGrid({ stats, statsLoading, onCategoryClick }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// HOW IT WORKS (#how)
-// 3 steps connected by a line that draws itself as the section scrolls in.
+// HOW IT WORKS — 4 numbered steps
 // ═══════════════════════════════════════════════════════════════════════════════
-const HOW_STEPS = [
-  {
-    step: '01',
-    icon: Camera,
-    title: 'Spot it, report it',
-    desc: 'Drop a pin on the map, add a photo and describe the problem. The whole process takes under 60 seconds on any phone.',
-  },
-  {
-    step: '02',
-    icon: ThumbsUp,
-    title: 'The community weighs in',
-    desc: 'Neighbours upvote the issues they share. High vote counts signal urgency so the most critical problems get attention first.',
-  },
-  {
-    step: '03',
-    icon: CheckCircle2,
-    title: 'Track it to resolution',
-    desc: 'Admins update the status as work progresses — in progress, then resolved. Every change is timestamped and public.',
-  },
+const STEPS = [
+  { icon: MapPin,        title: 'Pin the location',   text: 'Search an address or tap the map to mark exactly where the problem is.' },
+  { icon: Camera,        title: 'Add a photo',        text: 'Describe the issue and attach a photo so everyone can see what you see.' },
+  { icon: ThumbsUp,      title: 'Neighbours confirm', text: 'Residents upvote reports they share, so the biggest problems rise to the top.' },
+  { icon: CheckCircle2,  title: 'Track it to fixed',  text: 'Every status change is public and dated, from reported to resolved.' },
 ];
 
 function HowItWorks() {
-  const lineRef    = useRef(null);
-  const sectionRef = useRef(null);
-  const inView     = useInView(sectionRef, { once: true, margin: '-100px' });
-  const reduced    = useReducedMotion();
-
   return (
-    <section
-      id="how"
-      className="section-spacing how-section-v2"
-      aria-labelledby="how-heading"
-      ref={sectionRef}
-    >
-      <div className="container">
+    <section id="how" className="hx-section hx-section--alt" aria-labelledby="hx-how-title">
+      <div className="hx-container">
         <Reveal>
-          <div className="section-header">
-            <h2 id="how-heading" className="section-title">How it works</h2>
-            <p className="section-sub">Three simple steps, completely transparent at every stage.</p>
-          </div>
+          <header className="hx-head">
+            <span className="hx-eyebrow">How it works</span>
+            <h2 id="hx-how-title" className="hx-title">Report a problem in under a minute</h2>
+            <p className="hx-lead">Four simple steps, completely transparent from start to finish.</p>
+          </header>
         </Reveal>
+        <ol className="hx-steps">
+          {STEPS.map(({ icon: Icon, title, text }, i) => (
+            <Reveal as="li" key={title} delay={i * 0.08} className="hx-step">
+              <span className="hx-step__num" aria-hidden="true">{i + 1}</span>
+              <span className="hx-step__icon"><Icon size={26} aria-hidden="true" /></span>
+              <h3 className="hx-step__title">{title}</h3>
+              <p className="hx-step__text">{text}</p>
+            </Reveal>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
 
-        <div className="how-v2__steps">
-          {/* The connecting line lives here as a sibling of the step cards,
-              spanning the full width. We animate its scaleX from 0 → 1. */}
-          <div className="how-v2__line-track" aria-hidden="true">
-            <motion.div
-              className="how-v2__line-fill"
-              initial={{ scaleX: 0 }}
-              animate={inView ? { scaleX: 1 } : { scaleX: 0 }}
-              transition={{
-                duration: reduced ? 0 : 1.1,
-                delay:    reduced ? 0 : 0.3,
-                ease: [0.25, 0.46, 0.45, 0.94],
-              }}
-              style={{ transformOrigin: 'left center' }}
-            />
-          </div>
+// ═══════════════════════════════════════════════════════════════════════════════
+// WHO IT'S FOR
+// ═══════════════════════════════════════════════════════════════════════════════
+const AUDIENCE = [
+  { icon: Users,    title: 'For residents',            text: 'Report problems, back the ones you share, and follow every update without phone calls or letters.', to: '/reports/new', cta: 'Report an issue' },
+  { icon: Landmark, title: 'For officials & volunteers', text: 'A dashboard with charts, filters and status tools to prioritise work and show progress.',        to: '/login',       cta: 'Admin login' },
+  { icon: Eye,      title: 'For everyone',             text: 'All reports and their history are public, so the whole community can see what is fixed.',          to: '#browse',      cta: 'Browse the map' },
+];
 
-          {HOW_STEPS.map(({ step, icon: Icon, title, desc }, i) => (
-            <Reveal key={step} delay={i * 0.12}>
-              <div className="how-v2__step">
-                <div className="how-v2__bubble" aria-hidden="true">
-                  <span className="how-v2__step-num">{step}</span>
-                  <div className="how-v2__icon-wrap">
-                    <Icon size={24} />
-                  </div>
-                </div>
-                <h3 className="how-v2__title">{title}</h3>
-                <p className="how-v2__desc">{desc}</p>
-              </div>
+function Audience() {
+  return (
+    <section className="hx-section" aria-labelledby="hx-aud-title">
+      <div className="hx-container">
+        <Reveal>
+          <header className="hx-head">
+            <span className="hx-eyebrow">Built for the whole community</span>
+            <h2 id="hx-aud-title" className="hx-title">One platform, three ways to help</h2>
+          </header>
+        </Reveal>
+        <div className="hx-aud">
+          {AUDIENCE.map(({ icon: Icon, title, text, to, cta }, i) => (
+            <Reveal key={title} delay={i * 0.08}>
+              <article className="hx-aud__card">
+                <span className="hx-aud__icon"><Icon size={24} aria-hidden="true" /></span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+                {to.startsWith('#')
+                  ? <button type="button" className="hx-link" onClick={() => scrollToId(to.slice(1))}>{cta} <ArrowRight size={15} aria-hidden="true" /></button>
+                  : <Link to={to} className="hx-link">{cta} <ArrowRight size={15} aria-hidden="true" /></Link>}
+              </article>
             </Reveal>
           ))}
         </div>
@@ -359,10 +304,6 @@ function HowItWorks() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMMUNITY / TRUST  (#impact)
-// Split layout: photo left, honest text right. No invented stats or testimonials.
-// ═══════════════════════════════════════════════════════════════════════════════
 function CommunitySection() {
   return (
     <section
@@ -412,7 +353,7 @@ function CommunitySection() {
             </Reveal>
             <Reveal delay={0.18}>
               <div className="community-actions">
-                <Link to="/register" className="btn btn--primary btn--icon">
+                <Link to="/reports/new" className="btn btn--primary btn--icon">
                   Report an issue
                   <ArrowRight size={16} aria-hidden="true" />
                 </Link>
@@ -443,7 +384,7 @@ function CtaBand() {
             Reporting takes 60 seconds. Every report makes the data more useful for everyone.
           </p>
           <div className="cta-band__actions">
-            <Link to="/register" className="btn btn--white btn--lg btn--icon">
+            <Link to="/reports/new" className="btn btn--white btn--lg btn--icon">
               Report an issue
               <ArrowRight size={16} aria-hidden="true" />
             </Link>
@@ -580,103 +521,89 @@ export default function Home() {
     document.getElementById('browse')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Hero entrance variants
   const heroVariants = {
     hidden:  { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: reduced ? 0 : 0.14, delayChildren: reduced ? 0 : 0.1 } },
+    visible: { opacity: 1, transition: { staggerChildren: reduced ? 0 : 0.1, delayChildren: reduced ? 0 : 0.05 } },
   };
-  const heroItemVariants = {
-    hidden:  { opacity: 0, y: reduced ? 0 : 28 },
-    visible: { opacity: 1, y: 0, transition: { duration: reduced ? 0.15 : 0.55, ease: [0.25, 0.46, 0.45, 0.94] } },
+  const heroItem = {
+    hidden:  { opacity: 0, y: reduced ? 0 : 22 },
+    visible: { opacity: 1, y: 0, transition: { duration: reduced ? 0.15 : 0.5, ease: [0.25, 0.46, 0.45, 0.94] } },
   };
 
   return (
     <>
       {/* ══════ 1. HERO ══════ */}
-      <section className="hero2" aria-label="Welcome to FixMyTown">
-        <div className="hero2__bg" aria-hidden="true">
-          <img
-            src="/images/hero.jpg"
-            alt=""
-            className="hero2__photo"
-            fetchpriority="high"
-            decoding="async"
-            width="1920"
-            height="1080"
-            onError={(e) => {
-              e.currentTarget.classList.add('hero2__photo--error');
-            }}
-          />
-          <div className="hero2__overlay" />
+      <section className="hx-hero" aria-label="Welcome to FixMyTown">
+        <div className="hx-hero__bg" aria-hidden="true">
+          <img src="/images/hero.jpg" alt="" className="hx-hero__photo" fetchpriority="high" decoding="async"
+               onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          <div className="hx-hero__grid" />
         </div>
 
-        <motion.div className="hero2__inner" variants={heroVariants} initial="hidden" animate="visible">
-          <motion.div variants={heroItemVariants} className="hero2__badge">
-            <span className="hero2__badge-dot" aria-hidden="true" />
-            Community problem reporting
+        <div className="hx-container hx-hero__inner">
+          <motion.div className="hx-hero__copy" variants={heroVariants} initial="hidden" animate="visible">
+            <motion.span variants={heroItem} className="hx-badge">
+              <span className="hx-badge__dot" aria-hidden="true" /> Community problem reporting
+            </motion.span>
+
+            <motion.h1 variants={heroItem} className="hx-h1">
+              See a problem in your town?
+              <span className="hx-h1__accent"> Report it. Track it. Get it fixed.</span>
+            </motion.h1>
+
+            <motion.p variants={heroItem} className="hx-sub">
+              Pin it on the map, add a photo, and let your neighbours confirm it.
+              Every update is public, from reported to fixed.
+            </motion.p>
+
+            <motion.form variants={heroItem} className="hx-search" role="search"
+                         onSubmit={(e) => { e.preventDefault(); scrollToId('browse'); }}>
+              <div className="hx-search__row">
+                <GeocoderBox onSelect={handleGeocoderSelect} />
+                <button type="submit" className="hx-search__btn">
+                  <Search size={18} aria-hidden="true" /> <span>Find reports</span>
+                </button>
+              </div>
+              <div className="hx-search__links">
+                <button type="button" className="hx-search__link" onClick={requestGeoLocation} disabled={geoLoading}>
+                  {geoLoading ? <Loader2 size={15} className="spin" aria-hidden="true" /> : <LocateFixed size={15} aria-hidden="true" />}
+                  {geoLoading ? 'Locating…' : 'Use my current location'}
+                </button>
+                <Link to="/reports/new" className="hx-search__link hx-search__link--strong">
+                  <Camera size={15} aria-hidden="true" /> Report a problem with a photo
+                </Link>
+              </div>
+              {geoError && <p className="hx-search__error" role="alert">{geoError}</p>}
+            </motion.form>
+
+            <motion.ul variants={heroItem} className="hx-chips" aria-label="Key features">
+              <li><ShieldCheck size={15} aria-hidden="true" /> Free to use</li>
+              <li><Users size={15} aria-hidden="true" /> Public and transparent</li>
+              <li><Sparkles size={15} aria-hidden="true" /> AI-assisted triage</li>
+            </motion.ul>
           </motion.div>
 
-          <motion.h1 variants={heroItemVariants} className="hero2__headline">
-            See a problem in your town?{' '}
-            <span className="hero2__headline--accent">
-              Report&nbsp;it. Track&nbsp;it. Get&nbsp;it&nbsp;fixed.
-            </span>
-          </motion.h1>
-
-          <motion.p variants={heroItemVariants} className="hero2__sub">
-            Search for your area, drop a pin on the problem, and let the whole
-            community track it to resolution — for free.
-          </motion.p>
-
-          <motion.ul variants={heroItemVariants} className="hero2__chips" aria-label="Key features">
-            {TRUST_CHIPS.map(({ icon: Icon, label }) => (
-              <li key={label} className="hero2__chip">
-                <Icon size={14} aria-hidden="true" />
-                {label}
-              </li>
-            ))}
-          </motion.ul>
-
-          <motion.div variants={heroItemVariants} className="hero2__search-card" role="search">
-            <GeocoderBox onSelect={handleGeocoderSelect} />
-            <div className="hero2__search-row">
-              <button
-                type="button"
-                className="btn btn--ghost hero2__locate-btn"
-                onClick={requestGeoLocation}
-                disabled={geoLoading}
-                aria-label="Use my current GPS location"
-              >
-                {geoLoading
-                  ? <Loader2 size={16} className="spin" aria-hidden="true" />
-                  : <LocateFixed size={16} aria-hidden="true" />}
-                {geoLoading ? 'Locating…' : 'Use my location'}
-              </button>
-              <button
-                type="button"
-                className="btn btn--primary hero2__search-btn"
-                onClick={() => document.getElementById('browse')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              >
-                <Search size={16} aria-hidden="true" />
-                Search reports
-              </button>
-            </div>
-            {geoError && <p className="hero2__geo-error" role="alert">{geoError}</p>}
-          </motion.div>
-        </motion.div>
+          <HeroPreview />
+        </div>
       </section>
 
-      {/* ══════ 2. IMPACT STRIP ══════ */}
-      <ImpactStrip />
+      {/* ══════ 2. LIVE STATS ══════ */}
+      <StatsStrip stats={globalStats} loading={statsLoading} />
 
-      {/* ══════ 3. CATEGORY GRID ══════ */}
-      <CategoryGrid
-        stats={globalStats}
-        statsLoading={statsLoading}
-        onCategoryClick={handleCategoryClick}
-      />
+      {/* ══════ 3. CATEGORIES ══════ */}
+      <Categories stats={globalStats} onPick={handleCategoryClick} />
 
       {/* ══════ 4. BROWSE / MAP ══════ */}
+      <div className="hx-browse">
+      <div className="hx-container hx-browse-head">
+        <Reveal>
+          <header className="hx-head hx-head--left">
+            <span className="hx-eyebrow">Live map</span>
+            <h2 className="hx-title">{userCoords ? 'Reports near you' : 'See what is happening in your town'}</h2>
+            <p className="hx-lead">Search, filter and open any report. Click a pin to see its photo and status.</p>
+          </header>
+        </Reveal>
+      </div>
       <div className="container">
         <section id="browse" className="civic-browse section-spacing" aria-label="Browse reports">
           {/* Mobile toggle */}
@@ -769,14 +696,18 @@ export default function Home() {
           </div>
         </section>
       </div>
+      </div>
 
       {/* ══════ 5. HOW IT WORKS ══════ */}
       <HowItWorks />
 
-      {/* ══════ 6. COMMUNITY / TRUST ══════ */}
+      {/* ══════ 6. WHO IT'S FOR ══════ */}
+      <Audience />
+
+      {/* ══════ 7. TRUST ══════ */}
       <CommunitySection />
 
-      {/* ══════ 7. CTA BAND ══════ */}
+      {/* ══════ 8. CTA ══════ */}
       <CtaBand />
     </>
   );

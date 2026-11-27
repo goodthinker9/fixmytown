@@ -166,7 +166,7 @@ export default function Admin() {
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="value" fill="#0f766e" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

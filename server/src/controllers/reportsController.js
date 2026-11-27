@@ -68,19 +68,29 @@ const createReport = asyncHandler(async (req, res, next) => {
       // We do NOT LIMIT before computing haversine so closer matches
       // that happen to be listed after the 50th entry aren't missed.
       const DEGREES = 0.0018; // ≈ 200 m
+      // Compute bounds in JavaScript to avoid PostgreSQL "operator is not unique:
+      // unknown - unknown" errors from arithmetic on untyped parameters ($2 - $3)
+      // inside a BETWEEN clause. Passing pre-computed bounds lets pg send typed
+      // parameters, so PostgreSQL can resolve every operator unambiguously.
+      const lat   = parseFloat(latitude);
+      const lng   = parseFloat(longitude);
+      const latMin = lat - DEGREES;
+      const latMax = lat + DEGREES;
+      const lngMin = lng - DEGREES;
+      const lngMax = lng + DEGREES;
       const nearby = await query(
         `select id, title, description, latitude, longitude, image_url, status
          from reports
          where category = $1
            and status   <> 'resolved'
            and created_at >= now() - interval '30 days'
-           and latitude  between $2 - $3 and $2 + $3
-           and longitude between $4 - $3 and $4 + $3
+           and latitude  between $2 and $3
+           and longitude between $4 and $5
          order by
-           ( (latitude  - $2) * (latitude  - $2)
-           + (longitude - $4) * (longitude - $4) )
+           ( (latitude  - $6) * (latitude  - $6)
+           + (longitude - $7) * (longitude - $7) )
          limit 20`,
-        [finalCategory, parseFloat(latitude), DEGREES, parseFloat(longitude)]
+        [finalCategory, latMin, latMax, lngMin, lngMax, lat, lng]
       );
 
       // Haversine confirmation (SQL bounding box is an approximation).

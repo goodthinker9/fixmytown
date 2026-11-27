@@ -12,8 +12,11 @@
 const crypto   = require('crypto');
 const supabase = require('../config/supabase');
 const AppError = require('./AppError');
+const env      = require('../config/env');
 
 const BUCKET = 'report-images';
+
+const _SERVICE_ROLE_KEY_PLACEHOLDER = /replace_with/i;
 
 /**
  * Upload a processed image buffer to Supabase Storage.
@@ -24,6 +27,13 @@ const BUCKET = 'report-images';
  * @returns {Promise<{ publicUrl: string, storagePath: string }>}
  */
 const uploadReportImage = async (buffer, mimetype, ext) => {
+  if (_SERVICE_ROLE_KEY_PLACEHOLDER.test(env.SUPABASE_SERVICE_ROLE_KEY)) {
+    throw new AppError(
+      'Image uploads are not configured. Set SUPABASE_SERVICE_ROLE_KEY in .env (Supabase > Project Settings > API > service_role secret) and restart the server.',
+      503
+    );
+  }
+
   const storagePath = `${crypto.randomUUID()}.${ext}`;
 
   const { error } = await supabase.storage

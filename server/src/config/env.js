@@ -47,8 +47,9 @@ if (_looksLikePlaceholder(env.SUPABASE_SERVICE_ROLE_KEY)) {
   console.error('❌ SUPABASE_SERVICE_ROLE_KEY is still a placeholder ("replace_with_your_service_role_key").');
   console.error('   Get your service_role key from Supabase > Project Settings > API > service_role secret.');
   console.error('   Set it in .env and restart the server. Image uploads will fail until then.');
-  // Don't kill the test runner; let tests run (they'll mock Supabase anyway).
-  if (env.NODE_ENV !== 'test') process.exit(1);
+  // Warn only — let the server start so other endpoints work. Uploads will
+  // return a clear 502 until a real key is configured.
+  console.warn('⚠️  Continuing without Supabase Storage (image uploads disabled).');
 }
 
 module.exports = env;

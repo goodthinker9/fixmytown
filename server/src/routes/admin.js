@@ -11,9 +11,20 @@ const { sanitizeBody } = require('../utils/sanitize');
 
 const router = express.Router();
 
+const CATEGORIES = ['water', 'electricity', 'roads', 'garbage', 'safety', 'other'];
+const STATUSES = ['reported', 'in_progress', 'resolved'];
+
 const updateStatusSchema = z.object({
   status: z.enum(['reported', 'in_progress', 'resolved']),
   note: z.string().max(500).optional(),
+});
+
+const listReportsSchema = z.object({
+  category: z.enum(CATEGORIES).optional(),
+  status: z.enum(STATUSES).optional(),
+  search: z.string().max(150).optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
 });
 
 // AI endpoints are more expensive than DB queries. Rate-limit separately:
@@ -31,6 +42,8 @@ const aiLimiter = rateLimit({
 router.use(authRequired, adminOnly);
 
 router.patch('/reports/:id/status', validate(updateStatusSchema), sanitizeBody, adminController.updateStatus);
+router.get('/reports', validate(listReportsSchema, 'query'), adminController.listReportsForAdmin);
+router.get('/reports/unreviewed-count', adminController.getUnreviewedCount);
 router.get('/stats', adminController.getStats);
 router.get('/weekly-summary', aiLimiter, adminController.getWeeklySummary);
 

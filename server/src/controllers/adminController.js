@@ -14,8 +14,6 @@ const { generateWeeklySummary } = require('../utils/aiHelpers');
 
 const CATEGORIES = ['water', 'electricity', 'roads', 'garbage', 'safety', 'other'];
 const STATUSES   = ['reported', 'in_progress', 'resolved'];
-
-// PATCH /api/admin/reports/:id/status
 const updateStatus = asyncHandler(async (req, res, next) => {
   const { id: reportId } = req.params;
   const { status: newStatus, note } = req.body;
@@ -163,4 +161,62 @@ const getWeeklySummary = asyncHandler(async (req, res, next) => {
   res.json({ summary });
 });
 
-module.exports = { updateStatus, getStats, getWeeklySummary };
+// ── GET /api/admin/reports ──────────────────────────────────────────────────
+// Paginated, filterable list of ALL reports for the admin review queue.
+// Includes reporter name. Sorted newest first.
+const listReportsForAdmin = asyncHandler(async (req, res, next) => {
+  const { category, status, search, page, limit } = req.validated.query;
+
+  const filters = [];
+  const fp = [];
+
+  if (category) { fp.push(category); filters.push(`r.category = $${fp.length}`); }
+  if (status)   { fp.push(status);   filters.push(`r.status   = $${fp.length}`); }
+  if (search) {
+    const esc = search.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+    fp.push(`%${esc}%`);
+    filters.push(`r.title ILIKE $${fp.length} ESCAPE '\\'`);
+  }
+
+  const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+  const offset = (page - 1) * limit;
+
+  const countRes = await query(
+    `SELECT COUNT(*)::int AS total FROM reports r ${where}`,
+    fp
+  );
+  const total = countRes.rows[0].total;
+
+  const dp = [...fp, limit, offset];
+  const dataRes = await query(
+    `SELECT r.id, r.user_id, u.name AS reporter_name, r.title, r.description,
+            r.category, r.status, r.latitude, r.longitude, r.image_url, r.priority,
+            r.upvote_count, r.created_at, r.updated_at, r.resolved_at
+     FROM reports r
+     JOIN users u ON u.id = r.user_id
+     ${where}
+     ORDER BY r.created_at DESC
+     LIMIT $${dp.length - 1} OFFSET $${dp.length}`,
+    dp
+  );
+
+  res.json({
+    reports: dataRes.rows,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  });
+});
+
+// ── GET /api/admin/reports/unreviewed-count ─────────────────────────────────
+// Count of reports that still have status 'reported' (not yet actioned by an admin).
+// Useful for a dashboard notification badge.
+const getUnreviewedCount = asyncHandler(async (_req, res) => {
+  const result = await query(
+    `SELECT COUNT(*)::int AS unreviewed_count FROM reports WHERE status = 'reported'`
+  );
+  res.json({ unreviewed_count: result.rows[0].unreviewed_count });
+});
+
+module.exports = { updateStatus, getStats, getWeeklySummary, listReportsForAdmin, getUnreviewedCount };

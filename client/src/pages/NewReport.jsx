@@ -22,6 +22,7 @@ import {
   ArrowRight, ThumbsUp, MapPin,
 } from 'lucide-react';
 import '../utils/leafletIcons.js';
+import '../wizard.css';
 import { CATEGORY_ICONS } from '../utils/categoryIcons.jsx';
 import { useNominatim } from '../hooks/useNominatim.js';
 import { useDebounce } from '../hooks/useDebounce.js';
@@ -50,6 +51,13 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE      = 5 * 1024 * 1024;
 const STEPS         = ['Where', 'What', 'Send'];
 const DESC_MAX      = 500;
+
+// Where the map opens before the user picks a spot. Set VITE_DEFAULT_LAT and
+// VITE_DEFAULT_LNG in Vercel to change it; otherwise it opens on the demo town.
+const DEFAULT_CENTER = [
+  parseFloat(import.meta.env.VITE_DEFAULT_LAT) || 11.0512,
+  parseFloat(import.meta.env.VITE_DEFAULT_LNG) || 39.7478,
+];
 
 // ── tiny sub-components ─────────────────────────────────────────────────────
 
@@ -502,8 +510,8 @@ export default function NewReport() {
 
           <div className="wizard-map-wrap">
             <MapContainer
-              center={position || [0, 0]}
-              zoom={position ? 14 : 2}
+              center={position || DEFAULT_CENTER}
+              zoom={position ? 14 : 12}
               scrollWheelZoom
               className="wizard-map"
             >

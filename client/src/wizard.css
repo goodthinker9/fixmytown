@@ -1,0 +1,46 @@
+/* New-report wizard polish. Loaded after styles.css, so these rules win.
+   Colors come from the teal tokens in theme.css. No logic is touched. */
+.wizard-page {
+  max-width: 720px; margin: 24px auto 40px; padding: 28px 32px 32px;
+  background: #fff; border: 1px solid var(--border, #e2e8f0); border-radius: 20px;
+  box-shadow: 0 20px 50px -24px rgba(4, 47, 46, .35);
+}
+.wizard-step__title { color: var(--ink-900, #042f2e); }
+
+/* progress: teal instead of green/blue */
+.wizard-progress__step--done .wizard-progress__bubble { background: var(--primary-600, #0f766e); border-color: var(--primary-600, #0f766e); }
+.wizard-progress__step--active .wizard-progress__bubble { background: var(--primary-600, #0f766e); border-color: var(--primary-600, #0f766e); box-shadow: 0 0 0 4px var(--primary-100, #ccfbf1); }
+.wizard-progress__step--active .wizard-progress__label,
+.wizard-progress__step--done .wizard-progress__label { color: var(--primary-700, #115e59); }
+.wizard-progress__step--done + .wizard-progress__step .wizard-progress__line,
+.wizard-progress__step--done > .wizard-progress__line { background: var(--primary-600, #0f766e); }
+
+/* map */
+.wizard-map { height: 380px; border-radius: 14px; box-shadow: none; }
+
+/* category cards */
+.wizard-cat-btn { border-radius: 14px; border-width: 2px; transition: transform .12s, border-color .12s, box-shadow .12s; }
+.wizard-cat-btn:hover { transform: translateY(-2px); border-color: var(--primary-500, #14b8a6); }
+.wizard-cat-btn:focus-within { outline: 3px solid var(--primary-200, #99f6e4); outline-offset: 2px; }
+
+/* photo drop zone */
+.drop-zone { border-radius: 14px; padding: 36px 20px; border: 2px dashed var(--primary-500, #14b8a6); background: var(--primary-50, #f0fdfa); color: var(--primary-700, #115e59); }
+.drop-zone__icon { color: var(--primary-600, #0f766e); }
+
+/* summary */
+.wizard-summary { border-radius: 14px; background: var(--primary-50, #f0fdfa); border-color: var(--primary-100, #ccfbf1); }
+
+/* navigation bar */
+.wizard-nav { border-top: 1px solid var(--border, #e2e8f0); padding-top: 20px; margin-top: 28px; }
+
+/* success + duplicate screens */
+.wizard-terminal__card { border-radius: 20px; }
+.wizard-terminal__icon--success { color: var(--primary-600, #0f766e); }
+
+@media (max-width: 600px) {
+  .wizard-page { margin: 12px 0 24px; padding: 20px 16px 24px; border-radius: 16px; }
+  .wizard-map { height: 280px; }
+}
+
+/* search icon was invisible on the white card */
+.wizard-page .geocoder__icon { color: var(--muted, #64748b); }

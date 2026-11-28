@@ -3,9 +3,10 @@ import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import {
   ThumbsUp, ThumbsDown, ArrowLeft, Trash2, MapPin,
-  Share2, Check, AlertCircle, Loader2,
+  Share2, Check, AlertCircle, Loader2, CalendarDays, User, Circle,
 } from 'lucide-react';
 import '../utils/leafletIcons.js';
+import '../reportdetail.css';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { CategoryIcon } from '../utils/categoryIcons.jsx';
 import { getReport, toggleUpvote, deleteReport } from '../api/reports.js';
@@ -18,6 +19,12 @@ const TIMELINE_DOT_COLORS = {
   in_progress: 'var(--status-in_progress-fg)',
   resolved:    'var(--status-resolved-fg)',
 };
+
+const STEPS = [
+  { key: 'reported',    label: 'Reported' },
+  { key: 'in_progress', label: 'In progress' },
+  { key: 'resolved',    label: 'Resolved' },
+];
 
 export default function ReportDetail() {
   const { id }      = useParams();
@@ -99,7 +106,7 @@ export default function ReportDetail() {
   if (loading) return <div className="loading"><Loader2 size={20} className="spin" aria-hidden="true" /> Loading…</div>;
   if (error) {
     return (
-      <div className="page report-detail">
+      <div className="page rd">
         {flash && <div className="alert alert--success" role="status">{flash}</div>}
         <div className="alert alert--error" role="alert"><AlertCircle size={15} aria-hidden="true" /> {error}</div>
         <Link to="/" className="btn btn--ghost btn--icon"><ArrowLeft size={15} aria-hidden="true" /> Go back</Link>
@@ -111,158 +118,151 @@ export default function ReportDetail() {
   const isOwner  = user && user.id === report.user_id;
   const isAdmin  = user && user.role === 'admin';
   const canDelete = isOwner || isAdmin;
+  const stepIndex = STEPS.findIndex((s) => s.key === report.status);
 
   return (
-    <div className="page report-detail">
+    <div className="page rd">
       {flash && <div className="alert alert--success" role="status">{flash}</div>}
       {deleteError && <div className="alert alert--error" role="alert"><AlertCircle size={15} aria-hidden="true" /> {deleteError}</div>}
 
-      {/* Top bar */}
-      <div className="report-detail__topbar">
+      <div className="rd__topbar">
         <Link to="/" className="back-link">
           <ArrowLeft size={15} aria-hidden="true" /> Back to reports
         </Link>
-        <button
-          type="button"
-          className="btn btn--ghost btn--sm btn--icon"
-          onClick={handleShare}
-          aria-label="Share this report"
-        >
+        <button type="button" className="btn btn--ghost btn--sm btn--icon" onClick={handleShare} aria-label="Share this report">
           {copied
             ? <><Check size={14} aria-hidden="true" /> Copied!</>
             : <><Share2 size={14} aria-hidden="true" /> Share</>}
         </button>
       </div>
 
-      {/* Hero image */}
-      {report.image_url && (
-        <img
-          src={report.image_url}
-          alt={`Photo of: ${report.title}`}
-          className="report-detail__hero-image"
-        />
-      )}
+      <div className="rd__grid">
+        {/* ── Main column ── */}
+        <article className="rd__main">
+          {report.image_url ? (
+            <img src={report.image_url} alt={`Photo of: ${report.title}`} className="rd__photo" />
+          ) : (
+            <div className="rd__photo rd__photo--empty" aria-hidden="true">
+              <CategoryIcon category={report.category} size={44} />
+              <span>No photo attached</span>
+            </div>
+          )}
 
-      {/* Badges + title */}
-      <div className="report-detail__badges">
-        <StatusBadge status={report.status} />
-        <span className="chip">
-          <CategoryIcon category={report.category} size={13} />
-          {report.category}
-        </span>
-      </div>
+          <div className="rd__badges">
+            <StatusBadge status={report.status} />
+            <span className="chip">
+              <CategoryIcon category={report.category} size={13} />
+              {report.category}
+            </span>
+          </div>
 
-      <h1 className="report-detail__h1">{report.title}</h1>
+          <h1 className="rd__title">{report.title}</h1>
 
-      <p className="report-detail__meta">
-        Reported by <strong>{report.reporter_name}</strong>
-        &nbsp;·&nbsp;
-        <time dateTime={report.created_at} title={new Date(report.created_at).toLocaleString()}>
-          {relativeTime(report.created_at)}
-        </time>
-      </p>
+          <p className="rd__meta">
+            <span><User size={14} aria-hidden="true" /> <strong>{report.reporter_name}</strong></span>
+            <span>
+              <CalendarDays size={14} aria-hidden="true" />{' '}
+              <time dateTime={report.created_at} title={new Date(report.created_at).toLocaleString()}>
+                {relativeTime(report.created_at)}
+              </time>
+            </span>
+          </p>
 
-      <p className="report-detail__desc">{report.description}</p>
+          <p className="rd__desc">{report.description}</p>
 
-      {/* Location chip */}
-      <p className="report-detail__coords">
-        <MapPin size={13} aria-hidden="true" />
-        {report.latitude.toFixed(5)}, {report.longitude.toFixed(5)}
-      </p>
-
-      {/* Upvote row */}
-      <div className="vote" role="group" aria-label="Vote on this report">
-        <button
-          type="button"
-          className={`btn ${upvoted ? 'btn--primary' : 'btn--ghost'} btn--icon`}
-          onClick={handleUpvote}
-          disabled={!user || voting}
-          aria-label={upvoted ? 'Remove your upvote' : 'Upvote this report'}
-          aria-pressed={upvoted ?? false}
-          title={!user ? 'Log in to upvote' : undefined}
-        >
-          {voting
-            ? <Loader2 size={15} className="spin" aria-hidden="true" />
-            : upvoted
-              ? <ThumbsDown size={15} aria-hidden="true" />
-              : <ThumbsUp size={15} aria-hidden="true" />}
-          {upvoted ? 'Upvoted' : 'Upvote'}
-        </button>
-        <span className="vote__count" aria-label={`${voteCount} upvotes`}>{voteCount}</span>
-        {!user && <span className="vote__hint"><Link to="/login">Log in</Link> to upvote.</span>}
-        {voteError && <span className="vote__error" role="alert"><AlertCircle size={12} aria-hidden="true" /> {voteError}</span>}
-      </div>
-
-      {/* Mini map */}
-      <h2 className="report-detail__section">Location</h2>
-      <MapContainer
-        center={[report.latitude, report.longitude]}
-        zoom={15}
-        scrollWheelZoom={false}
-        className="mini-map"
-        aria-label="Map showing report location"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <Marker position={[report.latitude, report.longitude]} />
-      </MapContainer>
-
-      {/* Status timeline */}
-      <h2 className="report-detail__section">Status history</h2>
-      {history.length === 0 ? (
-        <p className="empty-mini">No status changes recorded yet.</p>
-      ) : (
-        <ol className="timeline" aria-label="Status change history">
-          {history.map((h, idx) => (
-            <li key={h.id} className="timeline__item">
-              <div
-                className="timeline__dot"
-                style={{ background: TIMELINE_DOT_COLORS[h.new_status] || 'var(--primary)' }}
-                aria-hidden="true"
-              />
-              {idx < history.length - 1 && (
-                <div className="timeline__line" aria-hidden="true" />
-              )}
-              <div className="timeline__content">
-                <div className="timeline__row">
-                  <StatusBadge status={h.new_status} />
-                  <time className="timeline__date" dateTime={h.created_at}>
-                    {new Date(h.created_at).toLocaleDateString('en', {
-                      day: 'numeric', month: 'short', year: 'numeric',
-                    })}
-                  </time>
-                </div>
-                {h.old_status && (
-                  <p className="timeline__from">
-                    Changed from <em>{h.old_status.replace('_', ' ')}</em>
-                  </p>
-                )}
-                {h.note && <p className="timeline__note">&ldquo;{h.note}&rdquo;</p>}
-                <p className="timeline__by">Updated by {h.changed_by_name || 'a team member'}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      )}
-
-      {/* Delete */}
-      {canDelete && (
-        <div className="report-detail__actions">
-          <button
-            type="button"
-            className="btn btn--danger btn--icon"
-            onClick={handleDelete}
-            disabled={deleting}
+          <h2 className="rd__h2">Location</h2>
+          <MapContainer
+            center={[report.latitude, report.longitude]}
+            zoom={15}
+            scrollWheelZoom={false}
+            className="mini-map rd__map"
+            aria-label="Map showing report location"
           >
-            {deleting
-              ? <Loader2 size={15} className="spin" aria-hidden="true" />
-              : <Trash2 size={15} aria-hidden="true" />}
-            {deleting ? 'Deleting…' : 'Delete this report'}
-          </button>
-        </div>
-      )}
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <Marker position={[report.latitude, report.longitude]} />
+          </MapContainer>
+          <p className="rd__coords">
+            <MapPin size={13} aria-hidden="true" />
+            {report.latitude.toFixed(5)}, {report.longitude.toFixed(5)}
+          </p>
+        </article>
+
+        {/* ── Side column ── */}
+        <aside className="rd__side">
+          <section className="rd__card" aria-label="Progress">
+            <h2 className="rd__card-title">Progress</h2>
+            <ol className="rd__steps">
+              {STEPS.map((st, i) => (
+                <li key={st.key} className={`rd__step ${i < stepIndex ? 'is-done' : ''} ${i === stepIndex ? 'is-current' : ''}`}>
+                  <span className="rd__step-dot">
+                    {i <= stepIndex ? <Check size={12} aria-hidden="true" /> : <Circle size={8} aria-hidden="true" />}
+                  </span>
+                  <span className="rd__step-label">{st.label}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <section className="rd__card" aria-label="Support this report">
+            <h2 className="rd__card-title">Community support</h2>
+            <div className="rd__vote" role="group" aria-label="Vote on this report">
+              <span className="rd__vote-count" aria-label={`${voteCount} upvotes`}>{voteCount}</span>
+              <span className="rd__vote-text">neighbours affected</span>
+            </div>
+            <button
+              type="button"
+              className={`btn ${upvoted ? 'btn--primary' : 'btn--ghost'} btn--icon btn--block`}
+              onClick={handleUpvote}
+              disabled={!user || voting}
+              aria-label={upvoted ? 'Remove your upvote' : 'Upvote this report'}
+              aria-pressed={upvoted ?? false}
+              title={!user ? 'Log in to upvote' : undefined}
+            >
+              {voting
+                ? <Loader2 size={15} className="spin" aria-hidden="true" />
+                : <ThumbsUp size={15} aria-hidden="true" fill={upvoted ? 'currentColor' : 'none'} />}
+              {upvoted ? 'Upvoted' : 'Me too, upvote'}
+            </button>
+            {!user && <p className="rd__hint"><Link to="/login">Log in</Link> to upvote.</p>}
+            {voteError && <p className="rd__error" role="alert"><AlertCircle size={12} aria-hidden="true" /> {voteError}</p>}
+          </section>
+
+          <section className="rd__card" aria-label="Status history">
+            <h2 className="rd__card-title">Status history</h2>
+            {history.length === 0 ? (
+              <p className="empty-mini">No status changes recorded yet.</p>
+            ) : (
+              <ol className="rd__tl">
+                {[...history].reverse().map((h) => (
+                  <li key={h.id} className="rd__tl-item">
+                    <span className="rd__tl-dot" style={{ background: TIMELINE_DOT_COLORS[h.new_status] || 'var(--primary)' }} aria-hidden="true" />
+                    <div>
+                      <div className="rd__tl-row">
+                        <StatusBadge status={h.new_status} />
+                        <time className="rd__tl-date" dateTime={h.created_at}>
+                          {new Date(h.created_at).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </time>
+                      </div>
+                      {h.note && <p className="rd__tl-note">&ldquo;{h.note}&rdquo;</p>}
+                      <p className="rd__tl-by">by {h.changed_by_name || 'a team member'}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+
+          {canDelete && (
+            <button type="button" className="btn btn--danger btn--icon btn--block" onClick={handleDelete} disabled={deleting}>
+              {deleting ? <Loader2 size={15} className="spin" aria-hidden="true" /> : <Trash2 size={15} aria-hidden="true" />}
+              {deleting ? 'Deleting…' : 'Delete this report'}
+            </button>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }

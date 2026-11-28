@@ -304,6 +304,57 @@ function Audience() {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// TRUST VISUAL — illustrates a public report page with its status history.
+// Decorative example only (no real data); labelled as an example for honesty.
+// ═══════════════════════════════════════════════════════════════════════════════
+function TrustVisual() {
+  return (
+    <figure className="hx-trust__figure" aria-label="Illustration of a public report page with its status history">
+      <div className="hx-tcard" aria-hidden="true">
+        <div className="hx-tcard__top">
+          <span className="hx-tcard__chip"><Construction size={13} /> Roads</span>
+          <span className="hx-tcard__badge"><Wrench size={12} /> In progress</span>
+        </div>
+        <strong className="hx-tcard__title">Pothole on the main road</strong>
+        <span className="hx-tcard__meta"><MapPin size={12} /> Pinned on the map &nbsp;·&nbsp; <Camera size={12} /> Photo attached</span>
+
+        <div className="hx-tcard__map">
+          <svg viewBox="0 0 320 90" preserveAspectRatio="xMidYMid slice">
+            <rect width="320" height="90" fill="#e3eeed" />
+            {[[8,8,64,30],[84,8,52,30],[150,8,70,22],[236,8,76,34],[8,52,52,30],[74,52,66,30],[236,56,76,28]].map(([x,y,w,h],i) => (
+              <rect key={i} x={x} y={y} width={w} height={h} rx="5" fill="#f4f8f7" />
+            ))}
+            <path d="M0 44 H320 M146 0 V90 M226 0 V90" stroke="#fff" strokeWidth="6" />
+          </svg>
+          <span className="hx-tcard__pin"><MapPin size={16} /></span>
+        </div>
+
+        <ol className="hx-tl">
+          <li className="hx-tl__item is-done">
+            <span className="hx-tl__dot"><CheckCircle2 size={14} /></span>
+            <div><b>Reported</b><span>A resident files it with a photo and pin</span></div>
+          </li>
+          <li className="hx-tl__item is-active">
+            <span className="hx-tl__dot"><Wrench size={12} /></span>
+            <div><b>In progress</b><span>Status changed by an admin, with a note</span></div>
+          </li>
+          <li className="hx-tl__item">
+            <span className="hx-tl__dot" />
+            <div><b>Fixed</b><span>Closed and kept in the public history</span></div>
+          </li>
+        </ol>
+
+        <div className="hx-tcard__foot"><ThumbsUp size={14} /> Neighbours can confirm they share the problem</div>
+      </div>
+
+      <span className="hx-trust__chip hx-trust__chip--a" aria-hidden="true"><Eye size={15} /> Visible to everyone</span>
+      <span className="hx-trust__chip hx-trust__chip--b" aria-hidden="true"><ShieldCheck size={15} /> Permanent history</span>
+      <figcaption className="hx-trust__caption">Example of a public report page</figcaption>
+    </figure>
+  );
+}
+
 function CommunitySection() {
   return (
     <section
@@ -313,20 +364,9 @@ function CommunitySection() {
     >
       <div className="container">
         <div className="community-split">
-          {/* Photo */}
-          <Reveal className="community-split__image-wrap">
-              <img
-              src="https://images.unsplash.com/photo-1518389902083-b8d6104fc7c9?w=960&h=640&fit=crop&q=80"
-              alt="Residential street in the evening with lit houses and community members visible"
-              className="community-split__image"
-              loading="lazy"
-              width="960"
-              height="640"
-              onError={(e) => {
-                e.currentTarget.classList.add('community-split__image--error');
-                e.currentTarget.closest('.community-split__image-wrap')?.classList.add('community-split__image-wrap--error');
-              }}
-            />
+          {/* Illustration: what a public report page looks like */}
+          <Reveal className="hx-trust">
+            <TrustVisual />
           </Reveal>
 
           {/* Text */}
@@ -535,7 +575,7 @@ export default function Home() {
       {/* ══════ 1. HERO ══════ */}
       <section className="hx-hero" aria-label="Welcome to FixMyTown">
         <div className="hx-hero__bg" aria-hidden="true">
-          <img src="https://images.unsplash.com/photo-1449429473617-4372f478504a?w=1200&h=800&fit=crop&q=80" alt="" className="hx-hero__photo" fetchpriority="high" decoding="async"
+          <img src="/images/hero.jpg" alt="" className="hx-hero__photo" fetchpriority="high" decoding="async"
                onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           <div className="hx-hero__grid" />
         </div>

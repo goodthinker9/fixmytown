@@ -1,0 +1,33 @@
+/* Login / Register split layout. Classes are prefixed "as-" so they never
+   clash with styles.css. Colors come from the tokens in theme.css. */
+.as-page { display: flex; justify-content: center; padding: var(--space-6, 24px) 0 var(--space-8, 40px); }
+.as-card {
+  width: 100%; max-width: 940px; display: grid; grid-template-columns: 1fr 1.1fr;
+  background: #fff; border: 1px solid var(--border, #e2e8f0); border-radius: 20px;
+  overflow: hidden; box-shadow: 0 20px 50px -20px rgba(4, 47, 46, .35);
+}
+.as-brand {
+  position: relative; padding: 40px 36px; color: #fff;
+  background:
+    radial-gradient(circle at 90% 8%, rgba(249, 115, 22, .35), transparent 45%),
+    linear-gradient(160deg, var(--ink-900, #042f2e), var(--primary-600, #0f766e));
+  display: flex; flex-direction: column; gap: 16px; justify-content: center;
+}
+.as-brand__logo { display: inline-flex; align-items: center; gap: 10px; color: #fff; font-weight: 800; font-size: 20px; text-decoration: none; margin-bottom: 12px; }
+.as-brand__title { margin: 0; font-size: 28px; line-height: 1.15; color: #fff; }
+.as-brand__text { margin: 0; color: rgba(255, 255, 255, .82); line-height: 1.55; }
+.as-brand__list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 12px; }
+.as-brand__list li { display: flex; gap: 10px; align-items: flex-start; color: rgba(255, 255, 255, .92); font-size: 14.5px; }
+.as-brand__list svg { flex: none; margin-top: 2px; color: var(--primary-200, #99f6e4); }
+.as-formwrap { padding: 40px 40px 32px; display: flex; flex-direction: column; justify-content: center; }
+.as-title { margin: 0 0 6px; font-size: 26px; color: var(--ink-900, #042f2e); }
+.as-sub { margin: 0 0 20px; color: var(--muted, #64748b); font-size: 14.5px; }
+.as-form { display: flex; flex-direction: column; }
+.as-switch { text-align: center; margin: 18px 0 0; color: var(--muted, #64748b); font-size: 14px; }
+.as-switch a { color: var(--primary-600, #0f766e); font-weight: 700; }
+
+@media (max-width: 820px) {
+  .as-card { grid-template-columns: 1fr; border-radius: 16px; }
+  .as-brand { display: none; }
+  .as-formwrap { padding: 28px 22px 24px; }
+}

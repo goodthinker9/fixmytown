@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
-import Logo from '../components/Logo.jsx';
+import AuthShell from '../components/AuthShell.jsx';
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
@@ -46,13 +46,8 @@ export default function Login() {
   };
 
   return (
-    <div className="auth-page">
-      <form className="card auth-form" onSubmit={handleSubmit} noValidate>
-        <div className="auth-form__logo">
-          <Logo size={36} />
-        </div>
-        <h1 className="auth-form__title">Welcome back</h1>
-        <p className="auth-form__sub">Log in to report and track local problems.</p>
+    <AuthShell title="Welcome back" subtitle="Log in to report and track local problems.">
+      <form className="as-form" onSubmit={handleSubmit} noValidate>
 
         {serverError && (
           <div className="alert alert--error" role="alert">
@@ -112,10 +107,10 @@ export default function Login() {
           {submitting ? 'Logging in…' : 'Log in'}
         </button>
 
-        <p className="auth-form__switch">
+        <p className="as-switch">
           No account? <Link to="/register">Create one free</Link>
         </p>
       </form>
-    </div>
+    </AuthShell>
   );
 }

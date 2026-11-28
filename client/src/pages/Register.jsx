@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
-import Logo from '../components/Logo.jsx';
+import AuthShell from '../components/AuthShell.jsx';
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
@@ -64,13 +64,8 @@ export default function Register() {
   ];
 
   return (
-    <div className="auth-page">
-      <form className="card auth-form" onSubmit={handleSubmit} noValidate>
-        <div className="auth-form__logo">
-          <Logo size={36} />
-        </div>
-        <h1 className="auth-form__title">Create your account</h1>
-        <p className="auth-form__sub">Free forever. Report issues in your community.</p>
+    <AuthShell title="Create your account" subtitle="Free forever. Report issues in your community.">
+      <form className="as-form" onSubmit={handleSubmit} noValidate>
 
         {serverError && (
           <div className="alert alert--error" role="alert">
@@ -128,10 +123,10 @@ export default function Register() {
           {submitting ? 'Creating account…' : 'Create account'}
         </button>
 
-        <p className="auth-form__switch">
+        <p className="as-switch">
           Already have an account? <Link to="/login">Log in</Link>
         </p>
       </form>
-    </div>
+    </AuthShell>
   );
 }
